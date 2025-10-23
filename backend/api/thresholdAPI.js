@@ -1,7 +1,7 @@
 // api/thresholdAPI.js
 // Handles threshold management (Krish)
 
-const db = require('../db'); // ✅ connects to MySQL database
+const db = require('../db'); // connects to MySQL database
 
 // 1. Get system-wide thresholds
 async function getSystemThresholds() {
