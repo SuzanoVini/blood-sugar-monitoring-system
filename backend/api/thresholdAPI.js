@@ -1,84 +1,168 @@
 // api/thresholdAPI.js
 // Handles threshold management (Krish)
 
-const db = require('../db'); // connects to MySQL database
-
-// 1. Get system-wide thresholds
-async function getSystemThresholds() {
-  const [rows] = await db.query(`
+function getSystemThresholds(db, callback) {
+  const query = `
     SELECT *
     FROM categorythreshold
     ORDER BY Effective_Date DESC
     LIMIT 1
-  `);
-  return rows[0];
+  `;
+  
+  db.query(query, (err, results) => {
+    if (err) return callback(err, null);
+    callback(null, results[0]);
+  });
 }
 
-// 2. Update system thresholds (clinic staff function)
-async function updateSystemThresholds(normal_low, normal_high, borderline_low, borderline_high, abnormal_low, abnormal_high) {
-  await db.query(`
+// Update system thresholds
+function updateSystemThresholds(db, thresholdData, callback) {
+  const { normal_low, normal_high, borderline_low, borderline_high, abnormal_low, abnormal_high } = thresholdData;
+  
+  const query = `
     INSERT INTO categorythreshold
       (Normal_Low, Normal_High, Borderline_Low, Borderline_High, Abnormal_Low, Abnormal_High, Effective_Date)
     VALUES (?, ?, ?, ?, ?, ?, NOW())
-  `, [normal_low, normal_high, borderline_low, borderline_high, abnormal_low, abnormal_high]);
+  `;
+  
+  const values = [normal_low, normal_high, borderline_low, borderline_high, abnormal_low, abnormal_high];
+  
+  db.query(query, values, (err, results) => {
+    if (err) return callback(err, null);
+    callback(null, { success: true, threshold_id: results.insertId });
+  });
 }
 
-// 3. Categorize a reading based on thresholds
-async function categorizeReading(value, patient_id) {
-  // Check patient-specific thresholds first
-  const [patientRows] = await db.query(`
+// Categorize a reading based on thresholds
+function categorizeReading(db, value, patient_id, callback) {
+  // Get patient-specific thresholds
+  const patientQuery = `
     SELECT Threshold_Normal_Low, Threshold_Normal_High
     FROM patient
     WHERE Patient_ID = ?
-  `, [patient_id]);
-
-  let thresholds = patientRows[0];
-
-  // If null, use system thresholds
-  if (!thresholds || thresholds.Threshold_Normal_Low === null) {
-    const [systemRows] = await db.query(`
-      SELECT Normal_Low, Normal_High, Borderline_Low, Borderline_High
-      FROM categorythreshold
-      ORDER BY Effective_Date DESC
-      LIMIT 1
-    `);
-    thresholds = systemRows[0];
-  }
-
-  // Return "Normal", "Borderline", or "Abnormal"
-  const { Normal_Low, Normal_High, Borderline_Low, Borderline_High } = thresholds;
-
-  if (value >= Normal_Low && value <= Normal_High) return 'Normal';
-  if (value >= Borderline_Low && value <= Borderline_High) return 'Borderline';
-  return 'Abnormal';
+  `;
+  
+  db.query(patientQuery, [patient_id], (err, patientResults) => {
+    if (err) return callback(err, null);
+    
+    const patientThresholds = patientResults[0];
+    
+    // If patient has custom thresholds for Normal range
+    if (patientThresholds.Threshold_Normal_Low !== null && patientThresholds.Threshold_Normal_High !== null) {
+      const normalLow = patientThresholds.Threshold_Normal_Low;
+      const normalHigh = patientThresholds.Threshold_Normal_High;
+      
+      if (value >= normalLow && value <= normalHigh) {
+        return callback(null, 'Normal');
+      }
+      
+      // Get system thresholds for Borderline/Abnormal
+      const systemQuery = `
+        SELECT Borderline_Low, Borderline_High
+        FROM categorythreshold
+        ORDER BY Effective_Date DESC
+        LIMIT 1
+      `;
+      
+      db.query(systemQuery, (err, systemResults) => {
+        if (err) return callback(err, null);
+        
+        const system = systemResults[0];
+        if (value >= system.Borderline_Low && value <= system.Borderline_High) {
+          return callback(null, 'Borderline');
+        }
+        callback(null, 'Abnormal');
+      });
+    } else {
+      // Use system thresholds entirely
+      const systemQuery = `
+        SELECT Normal_Low, Normal_High, Borderline_Low, Borderline_High
+        FROM categorythreshold
+        ORDER BY Effective_Date DESC
+        LIMIT 1
+      `;
+      
+      db.query(systemQuery, (err, systemResults) => {
+        if (err) return callback(err, null);
+        
+        const thresholds = systemResults[0];
+        
+        if (value >= thresholds.Normal_Low && value <= thresholds.Normal_High) {
+          return callback(null, 'Normal');
+        }
+        if (value >= thresholds.Borderline_Low && value <= thresholds.Borderline_High) {
+          return callback(null, 'Borderline');
+        }
+        callback(null, 'Abnormal');
+      });
+    }
+  });
 }
 
-// 4. Update patient-specific thresholds
-async function updatePatientThresholds(patient_id, normal_low, normal_high) {
-  await db.query(`
+// Update patient-specific thresholds
+function updatePatientThresholds(db, patient_id, normal_low, normal_high, callback) {
+  const query = `
     UPDATE patient
     SET Threshold_Normal_Low = ?, Threshold_Normal_High = ?
     WHERE Patient_ID = ?
-  `, [normal_low, normal_high, patient_id]);
+  `;
+  
+  db.query(query, [normal_low, normal_high, patient_id], (err, results) => {
+    if (err) return callback(err, null);
+    callback(null, { success: true });
+  });
 }
 
-// 5. Get effective thresholds for patient
-async function getEffectiveThresholds(patient_id) {
-  const [rows] = await db.query(`
+// Get effective thresholds for patient
+function getEffectiveThresholds(db, patient_id, callback) {
+  const patientQuery = `
     SELECT Threshold_Normal_Low, Threshold_Normal_High
     FROM patient
     WHERE Patient_ID = ?
-  `, [patient_id]);
-
-  if (rows.length && rows[0].Threshold_Normal_Low !== null) return rows[0];
-
-  const [systemRows] = await db.query(`
-    SELECT Normal_Low, Normal_High, Borderline_Low, Borderline_High
-    FROM categorythreshold
-    ORDER BY Effective_Date DESC
-    LIMIT 1
-  `);
-  return systemRows[0];
+  `;
+  
+  db.query(patientQuery, [patient_id], (err, patientResults) => {
+    if (err) return callback(err, null);
+    
+    const patientThresholds = patientResults[0];
+    
+    // Patient has custom thresholds
+    if (patientThresholds.Threshold_Normal_Low !== null && patientThresholds.Threshold_Normal_High !== null) {
+      const systemQuery = `
+        SELECT Borderline_Low, Borderline_High, Abnormal_Low, Abnormal_High
+        FROM categorythreshold
+        ORDER BY Effective_Date DESC
+        LIMIT 1
+      `;
+      
+      db.query(systemQuery, (err, systemResults) => {
+        if (err) return callback(err, null);
+        
+        const system = systemResults[0];
+        callback(null, {
+          Normal_Low: patientThresholds.Threshold_Normal_Low,
+          Normal_High: patientThresholds.Threshold_Normal_High,
+          Borderline_Low: system.Borderline_Low,
+          Borderline_High: system.Borderline_High,
+          Abnormal_Low: system.Abnormal_Low,
+          Abnormal_High: system.Abnormal_High
+        });
+      });
+    } else {
+      // Return system thresholds
+      const systemQuery = `
+        SELECT Normal_Low, Normal_High, Borderline_Low, Borderline_High, Abnormal_Low, Abnormal_High
+        FROM categorythreshold
+        ORDER BY Effective_Date DESC
+        LIMIT 1
+      `;
+      
+      db.query(systemQuery, (err, systemResults) => {
+        if (err) return callback(err, null);
+        callback(null, systemResults[0]);
+      });
+    }
+  });
 }
 
 module.exports = {

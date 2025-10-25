@@ -4,8 +4,8 @@ Backend server for the Blood Sugar Monitoring System web application. Built with
 
 ## Prerequisites
 
-- Node.js 
-- MySQL Server 
+- Node.js (v14 or higher)
+- MySQL Server (via XAMPP or standalone)
 - npm or yarn package manager
 
 ## Setup Instructions
@@ -35,7 +35,7 @@ Adjust these values to match your local MySQL configuration.
 
 ### 3. Import Database
 
-Ensure you have imported the database schema from the `/database` folder:
+Import the database schema from the `/database` folder:
 ```bash
 mysql -u root -p < ../database/blood_sugar_monitoring_system.sql
 ```
@@ -56,60 +56,52 @@ npm start
 
 The server will start on http://localhost:5000
 
-### 5. Verify Installation
-
-Test the server by visiting these endpoints in your browser:
-
-- http://localhost:5000 - API information
-- http://localhost:5000/api/health - Database connection status
-- http://localhost:5000/api/test - User count query
-- http://localhost:5000/api/test/users - List all users
-- http://localhost:5000/api/test/readings - Sample readings with Event field
+Expected output:
+```
+==================================================
+Blood Sugar Monitoring System - Backend Server
+==================================================
+Server running on: http://localhost:5000
+Database: blood_sugar_monitoring_system
+CORS enabled for: http://localhost:3000
+Started at: [timestamp]
+==================================================
+```
 
 ## API Endpoints
 
-### Current Test Endpoints
+### Authentication
+- `POST /api/auth/register` - Register new patient account
+- `POST /api/auth/login` - User login
+- `POST /api/auth/logout` - User logout
+- `GET /api/auth/profile` - Get current user profile
 
-- **GET /** - API information and available endpoints
-- **GET /api/health** - Health check and database connection status
-- **GET /api/test** - Test database query (count users)
-- **GET /api/test/users** - Retrieve all users (debug only)
-- **GET /api/test/readings** - Retrieve sample readings with Event field
+### Patient Operations
+- `GET /api/patient/readings` - Get patient blood sugar readings
+- `POST /api/patient/readings` - Add new reading
+- `PUT /api/patient/readings/:id` - Update existing reading
+- `DELETE /api/patient/readings/:id` - Delete reading
+- `GET /api/patient/suggestions` - Get AI-generated suggestions
+- `GET /api/patient/alerts` - Get patient alerts
 
-### Planned Production Endpoints
+### Specialist Operations
+- `GET /api/specialist/patients` - Get all assigned patients
+- `GET /api/specialist/patients/:id` - Get specific patient details
+- `POST /api/specialist/feedback` - Provide feedback to patient
+- `GET /api/specialist/feedback/:patient_id` - Get patient feedback history
 
-#### Authentication (Sukhraj)
-- POST /api/auth/register - Register new patient account
-- POST /api/auth/login - User login
-- POST /api/auth/logout - User logout
-- GET /api/auth/profile - Get current user profile
+### Administrator Operations
+- `POST /api/admin/users/specialist` - Create new specialist account
+- `POST /api/admin/users/staff` - Create new staff account
+- `DELETE /api/admin/users/:id` - Delete user account
+- `POST /api/admin/reports/generate` - Generate system report
+- `GET /api/admin/reports/:id` - Retrieve specific report
+- `GET /api/admin/stats` - Get system-wide statistics
 
-#### Patient Operations (Vinicius)
-- GET /api/patient/readings - Get patient blood sugar readings
-- POST /api/patient/readings - Add new reading
-- PUT /api/patient/readings/:id - Update existing reading
-- DELETE /api/patient/readings/:id - Delete reading
-- GET /api/patient/suggestions - Get AI-generated suggestions
-- GET /api/patient/alerts - Get patient alerts
-
-#### Specialist Operations (Vinicius)
-- GET /api/specialist/patients - Get all assigned patients
-- GET /api/specialist/patients/:id - Get specific patient details
-- POST /api/specialist/feedback - Provide feedback to patient
-- GET /api/specialist/feedback/:patient_id - Get patient feedback history
-
-#### Administrator Operations (Krish)
-- POST /api/admin/users/specialist - Create new specialist account
-- POST /api/admin/users/staff - Create new staff account
-- DELETE /api/admin/users/:id - Delete user account
-- POST /api/admin/reports/generate - Generate system report
-- GET /api/admin/reports/:id - Retrieve specific report
-- GET /api/admin/stats - Get system-wide statistics
-
-#### Clinic Staff Operations
-- GET /api/staff/thresholds - Get current threshold settings
-- PUT /api/staff/thresholds - Update threshold settings
-- GET /api/staff/patients - View patient records (read-only)
+### Clinic Staff Operations
+- `GET /api/staff/thresholds` - Get current threshold settings
+- `PUT /api/staff/thresholds` - Update threshold settings
+- `GET /api/staff/patients` - View patient records (read-only)
 
 ## Project Structure
 ```
@@ -120,17 +112,17 @@ backend/
 ├── .gitignore                  # Git ignore rules
 ├── README.md                   # This file
 ├── /api                        # API function modules
-│   ├── userAPI.js              # User management (Manan)
-│   ├── bloodSugarAPI.js        # Blood sugar operations (Shivam)
-│   ├── thresholdAPI.js         # Threshold management (Krish)
-│   ├── alertAPI.js             # Alert system (Krish)
-│   └── adminAPI.js             # Admin operations (Krish)
+│   ├── userAPI.js
+│   ├── bloodSugarAPI.js
+│   ├── thresholdAPI.js
+│   ├── alertAPI.js
+│   └── adminAPI.js
 └── /routes                     # Express route handlers
-    ├── authRoutes.js           # Authentication routes (Sukhraj)
-    ├── patientRoutes.js        # Patient routes (Vinicius)
-    ├── specialistRoutes.js     # Specialist routes (Vinicius)
-    ├── adminRoutes.js          # Admin routes (Krish)
-    └── staffRoutes.js          # Staff routes
+    ├── authRoutes.js
+    ├── patientRoutes.js
+    ├── specialistRoutes.js
+    ├── adminRoutes.js
+    └── staffRoutes.js
 ```
 
 ## Troubleshooting
@@ -138,7 +130,7 @@ backend/
 ### Database Connection Issues
 
 **Error: Cannot connect to database**
-- Verify MySQL server is running
+- Verify MySQL server is running in XAMPP
 - Check database name exists: `blood_sugar_monitoring_system`
 - Confirm credentials in `.env` file are correct
 - Ensure MySQL port (default 3306) is not blocked
@@ -160,58 +152,28 @@ npm install
 ### Database Query Errors
 
 **Error: Table doesn't exist**
-- Reimport the database schema
+- Reimport the database schema from `/database` folder
 - Verify database name in `.env` matches imported database
 
-## Development Guidelines
+### Server Won't Start
 
-### Adding New Routes
-
-1. Create route handler in `/routes` directory
-2. Import and register in `server.js`
-3. Update this README with new endpoints
-
-### Adding New API Functions
-
-1. Create API module in `/api` directory
-2. Export functions for use in route handlers
-3. Include error handling in all database queries
-
-### Error Handling
-
-All database queries should include error handling:
-```javascript
-db.query(sql, params, (err, results) => {
-  if (err) {
-    return res.status(500).json({
-      success: false,
-      message: 'Query failed',
-      error: err.message
-    });
-  }
-  // Process results
-});
-```
+**Error: Database connection failed**
+- Make sure MySQL is running in XAMPP Control Panel
+- Verify `.env` credentials match your MySQL setup
+- Default XAMPP MySQL has no password (leave `DB_PASSWORD=` empty)
 
 ## Testing
 
 Test endpoints using:
-- Browser for GET requests
 - Postman for all HTTP methods
 - curl commands from terminal
+- Frontend integration testing
 
 Example curl test:
 ```bash
-curl http://localhost:5000/api/health
+curl -X GET http://localhost:5000/api/patient/readings \
+  -H "Content-Type: application/json"
 ```
-
-## Team Responsibilities
-
-- **Vinicius**: Server setup, patient routes, specialist routes, AI algorithms
-- **Sukhraj**: Authentication system, API service layer
-- **Krish**: Database, admin routes, threshold/alert/admin APIs
-- **Manan**: User management API
-- **Shivam**: Blood sugar data API
 
 ## License
 
