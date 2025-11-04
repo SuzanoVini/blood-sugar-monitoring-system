@@ -1,165 +1,182 @@
-// ===============================================
-// File: api/alertAPI.js
+// api/alertAPI.js
 // Author: Krish
 // Purpose: Manage patient alerts for abnormal readings
-// ===============================================
 
-const db = require('../db'); //  Import the MySQL connection
-
-// -------------------------------------------------
-// 1. Count abnormal readings this week
-// -------------------------------------------------
-// Purpose: Count how many 'Abnormal' readings a patient had
-// within the last 7 days (from current date/time).
-// -------------------------------------------------
-// Returns: Integer (abnormalCount)
-async function countAbnormalThisWeek(patient_id) {
-  const [rows] = await db.query(`
+// Count abnormal readings in the last 7 days for a patient
+function countAbnormalThisWeek(db, patientId, callback) {
+  const query = `
     SELECT COUNT(*) AS abnormalCount
-    FROM reading
+    FROM Sugar_Reading
     WHERE Category = 'Abnormal'
       AND Patient_ID = ?
-      AND Reading_DateTime >= DATE_SUB(NOW(), INTERVAL 7 DAY)
-  `, [patient_id]);
-
-  return rows[0].abnormalCount; // Return numeric count
+      AND DateTime >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+  `;
+  
+  db.query(query, [patientId], (err, results) => {
+    if (err) return callback(err, null);
+    callback(null, results[0].abnormalCount);
+  });
 }
 
-
-// -------------------------------------------------
-// 2. Check if alert should trigger
-// -------------------------------------------------
-// Purpose: Determine whether the abnormal reading count
-// exceeds the threshold (more than 3 in a week).
-// -------------------------------------------------
-// Returns: Boolean → true = trigger alert, false = no alert
-async function shouldTriggerAlert(patient_id) {
-  const abnormalCount = await countAbnormalThisWeek(patient_id);
-  return abnormalCount > 3; // Trigger alert if more than 3 abnormal readings
+// Check if alert should trigger (more than 3 abnormal readings)
+function shouldTriggerAlert(db, patientId, callback) {
+  countAbnormalThisWeek(db, patientId, (err, count) => {
+    if (err) return callback(err, null);
+    callback(null, count > 3);
+  });
 }
 
+// Get specialist assigned to patient
+function getPatientSpecialist(db, patientId, callback) {
+  const query = `
+    SELECT Specialist_ID
+    FROM Specialist_Patient_Assignment
+    WHERE Patient_ID = ?
+    ORDER BY Assigned_At DESC
+    LIMIT 1
+  `;
+  
+  db.query(query, [patientId], (err, results) => {
+    if (err) return callback(err, null);
+    if (results.length === 0) return callback(null, null);
+    callback(null, results[0].Specialist_ID);
+  });
+}
 
-// -------------------------------------------------
-// 3. Create alert record
-// -------------------------------------------------
-// Purpose: Insert a new alert row into MySQL when a patient’s
-// abnormal readings exceed the threshold.
-// -------------------------------------------------
-// Returns: Object { alert_id, patient_id, week_start, abnormal_count, recipients, sent_at }
-async function createAlert(patient_id, abnormal_count, specialist_id) {
-  // Step 1: Determine start of current week (7 days ago)
-  const [dateResult] = await db.query(`
-    SELECT DATE_SUB(CURDATE(), INTERVAL 7 DAY) AS week_start
-  `);
-  const week_start = dateResult[0].week_start;
-
-  // Step 2: Build recipients string
-  const recipients = `Patient ${patient_id}, Specialist ${specialist_id}`;
-
-  // Step 3: Insert a new alert row in MySQL
-  const [result] = await db.query(`
-    INSERT INTO alert (Patient_ID, Week_Start, Abnormal_Count, Sent_At, Recipients)
+// Create alert record in database
+function createAlert(db, patientId, abnormalCount, specialistId, callback) {
+  const weekStart = new Date();
+  weekStart.setDate(weekStart.getDate() - 7);
+  
+  const recipients = `Patient ${patientId}, Specialist ${specialistId}`;
+  
+  const query = `
+    INSERT INTO Alert (Patient_ID, Week_Start, Abnormal_Count, Sent_At, Recipients)
     VALUES (?, ?, ?, NOW(), ?)
-  `, [patient_id, week_start, abnormal_count, recipients]);
-
-  const alertId = result.insertId; // MySQL auto-incremented ID
-
-  console.log(` Alert created — ID: ${alertId}, Patient: ${patient_id}, Week: ${week_start}`);
-
-  // Step 4: Return the inserted alert details
-  return {
-    alert_id: alertId,
-    patient_id: patient_id,
-    week_start: week_start,
-    abnormal_count: abnormal_count,
-    recipients: recipients,
-    sent_at: new Date() // optional, represents current time
-  };
+  `;
+  
+  const values = [patientId, weekStart, abnormalCount, recipients];
+  
+  db.query(query, values, (err, results) => {
+    if (err) return callback(err, null);
+    
+    const alertData = {
+      alert_id: results.insertId,
+      patient_id: patientId,
+      week_start: weekStart,
+      abnormal_count: abnormalCount,
+      recipients: recipients,
+      sent_at: new Date()
+    };
+    
+    console.log(`Alert created - ID: ${alertData.alert_id}, Patient: ${patientId}`);
+    callback(null, alertData);
+  });
 }
 
-
-// -------------------------------------------------
-// 4. Get recent alerts for a patient
-// -------------------------------------------------
-// Purpose: Retrieve the most recent 10 alerts for a patient
-// (useful for dashboard or clinician view)
-// -------------------------------------------------
-async function getAlertsByPatient(patient_id) {
-  const [rows] = await db.query(`
+// Get recent alerts for a patient
+function getAlertsByPatient(db, patientId, callback) {
+  const query = `
     SELECT *
-    FROM alert
+    FROM Alert
     WHERE Patient_ID = ?
     ORDER BY Sent_At DESC
     LIMIT 10
-  `, [patient_id]);
-
-  return rows; // Returns an array of alert objects
+  `;
+  
+  db.query(query, [patientId], (err, results) => {
+    if (err) return callback(err, null);
+    callback(null, results);
+  });
 }
 
-
-// -------------------------------------------------
-// 5. Check all patients for alerts
-// -------------------------------------------------
-// Purpose: Run through all active patients, count abnormal readings,
-// and trigger alerts if necessary
-// -------------------------------------------------
-// Returns: Array of all alerts triggered during this run
-async function checkAllPatientsForAlerts() {
+// Check all active patients for alerts
+function checkAllPatientsForAlerts(db, callback) {
   const triggeredAlerts = [];
-
-  // Step 1: Fetch all active patients
-  const [patients] = await db.query(`
-    SELECT Patient_ID, Specialist_ID
-    FROM patient
-    WHERE Status = 'Active'
-  `);
-
-  // Step 2: Loop through each patient
-  for (const patient of patients) {
-    const patientId = patient.Patient_ID;
-    const specialistId = patient.Specialist_ID;
-
-    // Step 3: Count abnormal readings
-    const abnormalCount = await countAbnormalThisWeek(patientId);
-
-    // Step 4: Check if alert condition met
-    if (await shouldTriggerAlert(patientId)) {
-      // Step 5: Create alert in database
-      const newAlert = await createAlert(patientId, abnormalCount, specialistId);
-
-      // Step 6: Log alert notification (or send email/SMS in production)
-      logAlertNotification(patientId, specialistId, abnormalCount);
-
-      // Step 7: Store the result in memory (for summary/logging)
-      triggeredAlerts.push(newAlert);
+  
+  // Get all active patients (users with role 'Patient' and status 'Active')
+  const query = `
+    SELECT u.User_ID AS Patient_ID
+    FROM User u
+    INNER JOIN Patient p ON u.User_ID = p.Patient_ID
+    WHERE u.Role = 'Patient' AND u.Status = 'Active'
+  `;
+  
+  db.query(query, (err, patients) => {
+    if (err) return callback(err, null);
+    
+    if (patients.length === 0) {
+      return callback(null, []);
     }
-  }
-
-  // Step 8: Return all alerts triggered during this batch
-  return triggeredAlerts;
+    
+    let processedCount = 0;
+    
+    // Process each patient
+    patients.forEach(patient => {
+      const patientId = patient.Patient_ID;
+      
+      // Count abnormal readings
+      countAbnormalThisWeek(db, patientId, (err, abnormalCount) => {
+        if (err) {
+          console.error(`Error counting readings for patient ${patientId}:`, err);
+          processedCount++;
+          if (processedCount === patients.length) {
+            callback(null, triggeredAlerts);
+          }
+          return;
+        }
+        
+        // Check if alert should trigger
+        if (abnormalCount > 3) {
+          // Get assigned specialist
+          getPatientSpecialist(db, patientId, (err, specialistId) => {
+            if (err) {
+              console.error(`Error getting specialist for patient ${patientId}:`, err);
+              processedCount++;
+              if (processedCount === patients.length) {
+                callback(null, triggeredAlerts);
+              }
+              return;
+            }
+            
+            // Create alert
+            createAlert(db, patientId, abnormalCount, specialistId, (err, alert) => {
+              if (err) {
+                console.error(`Error creating alert for patient ${patientId}:`, err);
+              } else {
+                logAlertNotification(patientId, specialistId, abnormalCount);
+                triggeredAlerts.push(alert);
+              }
+              
+              processedCount++;
+              if (processedCount === patients.length) {
+                callback(null, triggeredAlerts);
+              }
+            });
+          });
+        } else {
+          processedCount++;
+          if (processedCount === patients.length) {
+            callback(null, triggeredAlerts);
+          }
+        }
+      });
+    });
+  });
 }
 
-
-// -------------------------------------------------
-// 6. Log alert notification
-// -------------------------------------------------
-// Purpose: Display a clear summary of the alert being triggered.
-// In a real system, this would send an email or SMS.
-function logAlertNotification(patient_id, specialist_id, abnormal_count) {
+// Log alert notification
+function logAlertNotification(patientId, specialistId, abnormalCount) {
   console.log('----------------------------------------------------');
   console.log('  ALERT TRIGGERED');
-  console.log(`Patient ${patient_id} has ${abnormal_count} abnormal readings this week.`);
+  console.log(`Patient ${patientId} has ${abnormalCount} abnormal readings this week.`);
   console.log('Notification details:');
-  console.log(`- Patient ID: ${patient_id}`);
-  console.log(`- Specialist ID: ${specialist_id}`);
+  console.log(`- Patient ID: ${patientId}`);
+  console.log(`- Specialist ID: ${specialistId}`);
   console.log(' Email/SMS would be sent here in production.');
   console.log('----------------------------------------------------');
 }
 
-
-// -------------------------------------------------
-// Export all functions for use in routes or cron jobs
-// -------------------------------------------------
 module.exports = {
   countAbnormalThisWeek,
   shouldTriggerAlert,
