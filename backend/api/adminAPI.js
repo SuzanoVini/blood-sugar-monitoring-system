@@ -79,7 +79,7 @@ function saveReport(admin_id, report_type, period_start, period_end, summary_dat
 
   db.query(query, [admin_id, report_type, period_start, period_end, summaryJSON], (err, result) => {
     if (err) return callback(err);
-    callback(null, { report_id: result.insertId }); // Return newly created report ID
+    callback(null, { report_id: result.insertId }); // Return newly created report_ID
   });
 }
 
