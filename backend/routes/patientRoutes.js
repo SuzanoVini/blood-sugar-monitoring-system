@@ -48,12 +48,25 @@ function verifyPatientMiddleware(req, res, next) {
   });
 }
 
+// Enforce that a Patient can only access their own resources
+function enforcePatientOwnership(req, res, next) {
+  if (req.user && req.user.role === 'Patient') {
+    if (!req.user.user_id || req.user.user_id !== req.patientId) {
+      return res.status(403).json({
+        success: false,
+        message: 'Forbidden: patients can only access their own data'
+      });
+    }
+  }
+  next();
+}
+
 /**
  * GET /api/patient/readings
  * Get patient blood sugar readings with optional filtering and pagination
  * Query params: patient_id (required), startDate, endDate, category, limit, offset
  */
-router.get('/readings', validatePatientId, verifyPatientMiddleware, (req, res) => {
+router.get('/readings', validatePatientId, verifyPatientMiddleware, enforcePatientOwnership, (req, res) => {
   const db = req.app.locals.db;
   const patientId = req.patientId;
 
@@ -109,7 +122,7 @@ router.get('/readings', validatePatientId, verifyPatientMiddleware, (req, res) =
  * Add new blood sugar reading
  * Body: patient_id, dateTime, value, unit (optional), foodNotes, activityNotes, event, symptoms, notes
  */
-router.post('/readings', validatePatientId, verifyPatientMiddleware, (req, res) => {
+router.post('/readings', validatePatientId, verifyPatientMiddleware, enforcePatientOwnership, (req, res) => {
   const db = req.app.locals.db;
   const patientId = req.patientId;
 
@@ -165,7 +178,7 @@ router.post('/readings', validatePatientId, verifyPatientMiddleware, (req, res) 
  * Params: id (reading_id)
  * Body: patient_id (required), and any fields to update
  */
-router.put('/readings/:id', validatePatientId, verifyPatientMiddleware, (req, res) => {
+router.put('/readings/:id', validatePatientId, verifyPatientMiddleware, enforcePatientOwnership, (req, res) => {
   const db = req.app.locals.db;
   const readingId = parseInt(req.params.id);
   const patientId = req.patientId;
@@ -237,7 +250,7 @@ router.put('/readings/:id', validatePatientId, verifyPatientMiddleware, (req, re
  * Params: id (reading_id)
  * Query/Body: patient_id (required)
  */
-router.delete('/readings/:id', validatePatientId, verifyPatientMiddleware, (req, res) => {
+router.delete('/readings/:id', validatePatientId, verifyPatientMiddleware, enforcePatientOwnership, (req, res) => {
   const db = req.app.locals.db;
   const readingId = parseInt(req.params.id);
   const patientId = req.patientId;
@@ -280,7 +293,7 @@ router.delete('/readings/:id', validatePatientId, verifyPatientMiddleware, (req,
  * Get AI-generated suggestions for patient
  * Query params: patient_id (required), limit (optional)
  */
-router.get('/suggestions', validatePatientId, verifyPatientMiddleware, (req, res) => {
+router.get('/suggestions', validatePatientId, verifyPatientMiddleware, enforcePatientOwnership, (req, res) => {
   const db = req.app.locals.db;
   const patientId = req.patientId;
   const limit = parseInt(req.query.limit) || 10;
@@ -311,7 +324,7 @@ router.get('/suggestions', validatePatientId, verifyPatientMiddleware, (req, res
  * Get alerts for patient
  * Query params: patient_id (required)
  */
-router.get('/alerts', validatePatientId, verifyPatientMiddleware, (req, res) => {
+router.get('/alerts', validatePatientId, verifyPatientMiddleware, enforcePatientOwnership, (req, res) => {
   const db = req.app.locals.db;
   const patientId = req.patientId;
 
@@ -341,7 +354,7 @@ router.get('/alerts', validatePatientId, verifyPatientMiddleware, (req, res) => 
  * Get reading statistics for patient
  * Query params: patient_id (required), startDate, endDate
  */
-router.get('/statistics', validatePatientId, verifyPatientMiddleware, (req, res) => {
+router.get('/statistics', validatePatientId, verifyPatientMiddleware, enforcePatientOwnership, (req, res) => {
   const db = req.app.locals.db;
   const patientId = req.patientId;
 
