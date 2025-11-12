@@ -82,10 +82,236 @@ function saveReport(db, admin_id, period_type, period_start, period_end, summary
   });
 }
 
+// 5️ Create specialist account
+function createSpecialist(db, userData, callback) {
+  const bcrypt = require('bcrypt');
+  const SALT_ROUNDS = 10;
+
+  // Validate required fields
+  if (!userData.name || !userData.email || !userData.password || !userData.workingId || !userData.specialization) {
+    return callback(new Error('Missing required fields: name, email, password, workingId, specialization'), null);
+  }
+
+  // Hash password
+  bcrypt.hash(userData.password, SALT_ROUNDS, (err, passwordHash) => {
+    if (err) {
+      return callback(err, null);
+    }
+
+    // Step 1: Insert into User table
+    const userQuery = `
+      INSERT INTO User (Name, Email, Password_Hash, Phone, Role, Status)
+      VALUES (?, ?, ?, ?, 'Specialist', 'Active');
+    `;
+
+    const userValues = [
+      userData.name,
+      userData.email,
+      passwordHash,
+      userData.phone || null
+    ];
+
+    db.query(userQuery, userValues, (err, userResult) => {
+      if (err) {
+        // Check for duplicate email
+        if (err.code === 'ER_DUP_ENTRY' && err.message.includes('Email')) {
+          return callback(new Error('Email already registered'), null);
+        }
+        return callback(err, null);
+      }
+
+      const userId = userResult.insertId;
+
+      // Step 2: Insert into Specialist table
+      const specialistQuery = `
+        INSERT INTO Specialist (Specialist_ID, Working_ID, Specialization)
+        VALUES (?, ?, ?);
+      `;
+
+      const specialistValues = [userId, userData.workingId, userData.specialization];
+
+      db.query(specialistQuery, specialistValues, (err, specialistResult) => {
+        if (err) {
+          // Rollback: Delete the user record if specialist insertion fails
+          db.query('DELETE FROM User WHERE User_ID = ?', [userId], (deleteErr) => {
+            if (deleteErr) {
+              console.error('Error rolling back user creation:', deleteErr);
+            }
+          });
+          return callback(err, null);
+        }
+
+        callback(null, {
+          userId: userId,
+          name: userData.name,
+          email: userData.email,
+          role: 'Specialist',
+          workingId: userData.workingId,
+          specialization: userData.specialization
+        });
+      });
+    });
+  });
+}
+
+// 6️ Create clinic staff account
+function createStaff(db, userData, callback) {
+  const bcrypt = require('bcrypt');
+  const SALT_ROUNDS = 10;
+
+  // Validate required fields
+  if (!userData.name || !userData.email || !userData.password || !userData.workingId || !userData.department) {
+    return callback(new Error('Missing required fields: name, email, password, workingId, department'), null);
+  }
+
+  // Hash password
+  bcrypt.hash(userData.password, SALT_ROUNDS, (err, passwordHash) => {
+    if (err) {
+      return callback(err, null);
+    }
+
+    // Step 1: Insert into User table
+    const userQuery = `
+      INSERT INTO User (Name, Email, Password_Hash, Phone, Role, Status)
+      VALUES (?, ?, ?, ?, 'Clinic_Staff', 'Active');
+    `;
+
+    const userValues = [
+      userData.name,
+      userData.email,
+      passwordHash,
+      userData.phone || null
+    ];
+
+    db.query(userQuery, userValues, (err, userResult) => {
+      if (err) {
+        // Check for duplicate email
+        if (err.code === 'ER_DUP_ENTRY' && err.message.includes('Email')) {
+          return callback(new Error('Email already registered'), null);
+        }
+        return callback(err, null);
+      }
+
+      const userId = userResult.insertId;
+
+      // Step 2: Insert into Clinic_Staff table
+      const staffQuery = `
+        INSERT INTO Clinic_Staff (Staff_ID, Working_ID, Department)
+        VALUES (?, ?, ?);
+      `;
+
+      const staffValues = [userId, userData.workingId, userData.department];
+
+      db.query(staffQuery, staffValues, (err, staffResult) => {
+        if (err) {
+          // Rollback: Delete the user record if staff insertion fails
+          db.query('DELETE FROM User WHERE User_ID = ?', [userId], (deleteErr) => {
+            if (deleteErr) {
+              console.error('Error rolling back user creation:', deleteErr);
+            }
+          });
+          return callback(err, null);
+        }
+
+        callback(null, {
+          userId: userId,
+          name: userData.name,
+          email: userData.email,
+          role: 'Clinic_Staff',
+          workingId: userData.workingId,
+          department: userData.department
+        });
+      });
+    });
+  });
+}
+
+// 7️ Delete user account
+function deleteUser(db, userId, callback) {
+  // Validate userId
+  if (!userId || isNaN(userId)) {
+    return callback(new Error('Valid userId is required'), null);
+  }
+
+  // Step 1: Verify user exists
+  const checkQuery = 'SELECT User_ID, Name, Role FROM User WHERE User_ID = ?';
+
+  db.query(checkQuery, [userId], (err, results) => {
+    if (err) {
+      return callback(err, null);
+    }
+
+    if (results.length === 0) {
+      return callback(new Error('User not found'), null);
+    }
+
+    const user = results[0];
+
+    // Step 2: Delete user (CASCADE will handle related records)
+    const deleteQuery = 'DELETE FROM User WHERE User_ID = ?';
+
+    db.query(deleteQuery, [userId], (err, result) => {
+      if (err) {
+        return callback(err, null);
+      }
+
+      callback(null, {
+        userId: user.User_ID,
+        name: user.Name,
+        role: user.Role,
+        deleted: true
+      });
+    });
+  });
+}
+
+// 8️ Get report by ID
+function getReportById(db, reportId, callback) {
+  // Validate reportId
+  if (!reportId || isNaN(reportId)) {
+    return callback(new Error('Valid reportId is required'), null);
+  }
+
+  const query = `
+    SELECT r.Report_ID, r.Admin_ID, r.Period_Type, r.Period_Start, r.Period_End,
+           r.Generated_At, r.Summary_Data, u.Name AS Admin_Name
+    FROM Report r
+    JOIN Administrator a ON r.Admin_ID = a.Admin_ID
+    JOIN User u ON a.Admin_ID = u.User_ID
+    WHERE r.Report_ID = ?;
+  `;
+
+  db.query(query, [reportId], (err, results) => {
+    if (err) {
+      return callback(err, null);
+    }
+
+    if (results.length === 0) {
+      return callback(new Error('Report not found'), null);
+    }
+
+    const report = results[0];
+
+    // Parse Summary_Data JSON
+    try {
+      report.Summary_Data = JSON.parse(report.Summary_Data);
+    } catch (parseErr) {
+      console.error('Error parsing Summary_Data JSON:', parseErr);
+      report.Summary_Data = null;
+    }
+
+    callback(null, report);
+  });
+}
+
 // Export all admin functions
 module.exports = {
   getAllUsers,
   getSystemStats,
   getActivePatientsInPeriod,
-  saveReport
+  saveReport,
+  createSpecialist,
+  createStaff,
+  deleteUser,
+  getReportById
 };
