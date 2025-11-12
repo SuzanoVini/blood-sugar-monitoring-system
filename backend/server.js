@@ -6,6 +6,7 @@ const cors = require('cors');
 const bodyParser = require('body-parser');
 const bcrypt = require('bcrypt');
 require('dotenv').config();
+const { verifyToken, requireRole } = require('./middleware/auth');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -13,7 +14,8 @@ const PORT = process.env.PORT || 5000;
 // Middleware Configuration
 app.use(cors({
   origin: 'http://localhost:3000',
-  credentials: true
+  credentials: true,
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
 app.use(bodyParser.json());
@@ -54,36 +56,47 @@ db.on('error', (err) => {
 // Make database connection available to all route handlers
 app.locals.db = db;
 
-// API Routes - To be implemented 
+// Validate critical environment configuration for JWT
+if (!process.env.JWT_SECRET) {
+  console.error('FATAL: JWT_SECRET environment variable is not set. Please set JWT_SECRET in your .env file.');
+  process.exit(1);
+}
+
+// API Routes
 
 // Authentication Routes - Implemented by Sukhraj
 // Handles user login, logout, registration, and session management (SessionManager from SDD)
-// const authRoutes = require('./routes/authRoutes');
-// app.use('/api/auth', authRoutes);
+const authRoutes = require('./routes/authRoutes');
+app.use('/api/auth', authRoutes);
+console.log('✓ Auth routes mounted at /api/auth');
 
 // Patient Routes - Implemented by Vinicius
 // Handles patient-specific operations including blood sugar readings,
 // AI suggestions, alerts, and data visualization
-// const patientRoutes = require('./routes/patientRoutes');
-// app.use('/api/patient', patientRoutes);
+const patientRoutes = require('./routes/patientRoutes');
+app.use('/api/patient', verifyToken, requireRole('Patient', 'Specialist', 'Clinic_Staff', 'Administrator'), patientRoutes);
+console.log('✓ Patient routes mounted at /api/patient');
 
 // Specialist Routes - Implemented by Vinicius
 // Handles specialist operations including viewing patient data,
 // providing feedback, and adjusting treatment plans
-// const specialistRoutes = require('./routes/specialistRoutes');
-// app.use('/api/specialist', specialistRoutes);
+const specialistRoutes = require('./routes/specialistRoutes');
+app.use('/api/specialist', verifyToken, requireRole('Specialist', 'Administrator'), specialistRoutes);
+console.log('✓ Specialist routes mounted at /api/specialist');
 
 // Admin Routes - Implemented by Krish
 // Handles administrator operations including user management,
 // report generation, and system statistics
-// const adminRoutes = require('./routes/adminRoutes');
-// app.use('/api/admin', adminRoutes);
+const adminRoutes = require('./routes/adminRoutes');
+app.use('/api/admin', verifyToken, requireRole('Administrator'), adminRoutes);
+console.log('✓ Admin routes mounted at /api/admin');
 
-// Staff Routes - To be implemented
+// Staff Routes - Implemented by Vinicius
 // Handles clinic staff operations including threshold configuration
 // and read-only access to patient records
-// const staffRoutes = require('./routes/staffRoutes');
-// app.use('/api/staff', staffRoutes);
+const staffRoutes = require('./routes/staffRoutes');
+app.use('/api/staff', verifyToken, requireRole('Clinic_Staff', 'Administrator'), staffRoutes);
+console.log('✓ Staff routes mounted at /api/staff');
 
 // Error Handling Middleware
 
