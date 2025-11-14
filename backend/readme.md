@@ -112,11 +112,12 @@ backend/
 ├── .gitignore                  # Git ignore rules
 ├── README.md                   # This file
 ├── /api                        # API function modules
-│   ├── userAPI.js
-│   ├── bloodSugarAPI.js
-│   ├── thresholdAPI.js
-│   ├── alertAPI.js
-│   └── adminAPI.js
+│   ├── authAPI.js              # Authentication operations
+│   ├── patientAPI.js           # Patient operations
+│   ├── specialistAPI.js        # Specialist operations
+│   ├── adminAPI.js             # Administrator operations
+│   ├── thresholdAPI.js         # Threshold system
+│   └── alertAPI.js             # Alert generation
 └── /routes                     # Express route handlers
     ├── authRoutes.js
     ├── patientRoutes.js
