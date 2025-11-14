@@ -1,60 +1,192 @@
 :root{
-  --brand: #2b7cff;
-  --muted: #666;
-  --bg: #f7f9fc;
-  --card: #fff;
+  --bg:#0b1220;           /* app background (slate) */
+  --surface:#0f172a;      /* cards/nav */
+  --muted:#94a3b8;        /* secondary text */
+  --text:#e2e8f0;         /* primary text */
+  --line:#1f2a44;         /* borders */
+  --primary:#3b82f6;      /* brand */
+  --primary-600:#2563eb;
+  --success:#10b981;
+  --warning:#f59e0b;
+  --danger:#ef4444;
+  --radius:14px;
+  --shadow:0 10px 30px rgba(0,0,0,.25), 0 1px 0 rgba(255,255,255,.04) inset;
 }
 
-body {
-  margin: 0;
-  font-family: Inter, Roboto, Arial, sans-serif;
-  background: var(--bg);
-  color: #222;
+*{box-sizing:border-box}
+html,body,#root{height:100%}
+body{
+  margin:0; font-family:Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  background:radial-gradient(1200px 600px at 20% -10%, rgba(59,130,246,.15), transparent 60%),
+             radial-gradient(1000px 600px at 120% 10%, rgba(16,185,129,.08), transparent 60%),
+             var(--bg);
+  color:var(--text);
 }
 
-.app-container {
-  display: grid;
-  grid-template-columns: 250px 1fr;
-  min-height: 100vh;
+/* App shell */
+.app{
+  display:grid; grid-template-rows:64px 1fr; grid-template-columns:260px 1fr; height:100%;
+}
+.header{
+  grid-column:1 / -1; display:flex; align-items:center; justify-content:space-between;
+  padding:0 20px; border-bottom:1px solid var(--line); background:rgba(15,23,42,.6); backdrop-filter: blur(10px);
+}
+.brand{display:flex; align-items:center; gap:12px; font-weight:700; letter-spacing:.2px}
+.brand .dot{width:10px;height:10px;border-radius:50%;background:linear-gradient(135deg,var(--primary),#22c55e)}
+.header .actions{display:flex; gap:8px; align-items:center}
+.avatar{width:32px;height:32px;border-radius:50%; background:linear-gradient(135deg,#60a5fa,#34d399)}
+.kbd{padding:2px 6px;border:1px solid var(--line);border-radius:6px;color:var(--muted);font-size:12px}
+
+/* Sidebar */
+.sidebar{
+  border-right:1px solid var(--line); background:linear-gradient(180deg, rgba(15,23,42,.85), rgba(15,23,42,.6));
+  padding:16px; overflow:auto;
+}
+.side-title{font-size:14px; color:var(--muted); text-transform:uppercase; letter-spacing:.12em; margin:10px 10px 8px}
+.nav{display:flex; flex-direction:column; gap:6px}
+.nav a{
+  display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:10px; color:var(--text); text-decoration:none;
+  border:1px solid transparent; transition:.2s;
+}
+.nav a:hover{background:rgba(59,130,246,.08); border-color:rgba(59,130,246,.2)}
+.nav a.active{background:rgba(59,130,246,.15); border-color:rgba(59,130,246,.35)}
+.logout{margin-top:auto; display:block; color:#eab308}
+
+/* Content area */
+.content{padding:24px 28px; overflow:auto}
+.page-title{font-size:26px; font-weight:700; margin:4px 0 18px}
+.grid{display:grid; gap:18px}
+.grid.cols-2{grid-template-columns:1.2fr .8fr}
+.grid.cols-3{grid-template-columns:repeat(3,1fr)}
+@media (max-width: 1100px){ .grid.cols-2, .grid.cols-3{grid-template-columns:1fr} }
+
+/* Card */
+.card{
+  background:linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,0)) , var(--surface);
+  border:1px solid var(--line); border-radius:var(--radius); box-shadow:var(--shadow);
+}
+.card .card-hd{padding:14px 16px; border-bottom:1px solid var(--line); display:flex; align-items:center; justify-content:space-between}
+.card .card-bd{padding:16px}
+
+/* Form */
+.form{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px}
+.form.full{grid-template-columns:1fr}
+label{font-size:12px; color:var(--muted); margin-bottom:6px; display:block}
+.input, .select, .textarea{
+  width:100%; padding:10px 12px; border-radius:10px; outline:0; color:var(--text);
+  background:#0b1326; border:1px solid #192444; transition:.15s;
+}
+.input:focus, .select:focus, .textarea:focus{border-color:var(--primary); box-shadow:0 0 0 4px rgba(59,130,246,.15)}
+.textarea{min-height:74px; resize:vertical}
+
+/* Buttons */
+.btn{
+  padding:10px 14px; border-radius:12px; border:1px solid transparent; cursor:pointer; font-weight:600;
+  transition:.2s; color:#0b1220; background:linear-gradient(135deg,var(--primary), var(--primary-600));
+}
+.btn:hover{filter:brightness(1.05)}
+.btn.ghost{background:transparent; color:var(--text); border-color:var(--line)}
+.btn.secondary{background:linear-gradient(135deg,#1f2937,#111827); color:var(--text); border:1px solid var(--line)}
+
+/* Table */
+.table{width:100%; border-collapse:separate; border-spacing:0 8px}
+.table th{font-size:12px; color:var(--muted); font-weight:600; text-align:left; padding:0 12px 6px}
+.table td{background:#0b1326; border:1px solid #192444; padding:12px; }
+.table tr td:first-child{border-radius:10px 0 0 10px}
+.table tr td:last-child{border-radius:0 10px 10px 0}
+
+/* Small chips for food/activity tags */
+.chips{display:flex; gap:8px; flex-wrap:wrap}
+.chip{font-size:12px; padding:6px 10px; border-radius:999px; background:rgba(59,130,246,.12); border:1px solid rgba(59,130,246,.25)}
+
+/* Chart container */
+.chart-wrap{height:260px}
+
+/* Utility */
+.m0{margin:0} .mt8{margin-top:8px} .mt16{margin-top:16px}
+
+/* Page container + dashboard grid */
+.container{max-width:1160px;margin:0 auto;padding:24px}
+.dashboard-grid{
+  display:grid;
+  grid-template-columns:minmax(340px,420px) 1fr;
+  gap:24px;
+  align-items:start;
+}
+.stack{display:grid;gap:16px}
+
+/* Ensure cards align and have a consistent header/body */
+.card{width:100%}
+.card-hd{padding:14px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between}
+.card-bd{padding:16px}
+.card h4{margin:0}
+
+/* AISuggestions small alignment tweak */
+.ai-card{align-self:start}
+
+/* Top navigation bar */
+.topbar{
+  position:sticky; top:0; z-index:20;
+  display:flex; align-items:center; justify-content:space-between;
+  gap:16px; padding:10px 18px;
+  background:var(--surface);
+  border-bottom:1px solid var(--line);
+  box-shadow: var(--shadow);
+}
+.brand{display:flex; align-items:center; gap:10px; font-weight:700}
+.brand .dot{width:10px;height:10px;border-radius:50%;background:linear-gradient(135deg,var(--primary),#22c55e)}
+.topnav{display:flex; align-items:center; gap:8px}
+.topnav-item{
+  appearance:none; border:1px solid transparent; cursor:pointer;
+  padding:8px 12px; border-radius:10px; color:var(--text);
+  background:transparent; transition:.18s;
+}
+.topnav-item:hover{background:rgba(59,130,246,.10); border-color:rgba(59,130,246,.25)}
+.topnav-item.active{
+  background:rgba(59,130,246,.18);
+  border-color:rgba(59,130,246,.45);
+  box-shadow:0 0 0 3px rgba(59,130,246,.12) inset;
+}
+.topbar-right{display:flex; align-items:center; gap:8px}
+
+/* Optional: compact on small screens */
+@media (max-width: 720px){
+  .topnav{gap:4px; overflow:auto}
+  .topnav-item{padding:8px 10px; white-space:nowrap}
 }
 
-.navigation {
-  background: var(--card);
-  padding: 16px;
-  border-right: 1px solid #e6eef9;
+/* Layout inside the card */
+.field-row{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:12px;
 }
+@media (max-width:900px){ .field-row{grid-template-columns:1fr} }
 
-.main-content {
-  padding: 24px;
-}
+.input-group{display:flex; flex-direction:column}
+.input-group label{font-size:12px; color:var(--muted); margin-bottom:6px}
+.help{font-size:12px; color:var(--muted); margin-top:6px}
 
-.card {
-  background: var(--card);
-  border-radius: 8px;
-  padding: 16px;
-  box-shadow: 0 1px 2px rgba(20,30,60,0.04);
-  margin-bottom: 16px;
+/* Input with right-side addon (unit select or icon) */
+.with-addon{position:relative}
+.addon{
+  position:absolute; inset:0 0 0 auto; width:120px; display:flex; align-items:center; justify-content:flex-end;
+  padding:0 6px; pointer-events:none;
 }
+.addon-select{
+  pointer-events:auto;
+  min-width:110px;
+  background:#0b1326; border:1px solid #192444; border-radius:10px; padding:8px 10px;
+}
+.addon-icon{width:34px; justify-content:center; opacity:.7}
 
-.table {
-  width: 100%;
-  border-collapse: collapse;
-}
+/* Make room for the addon inside the input */
+.with-addon .input{padding-right:128px}
+.with-addon .input:focus{padding-right:128px}
 
-.table th, .table td {
-  padding: 8px;
-  border-bottom: 1px solid #f0f4fb;
-  text-align: left;
-}
+/* Buttons row */
+.btn-row{display:flex; gap:10px; margin-top:10px}
+.btn-row .btn{min-width:160px}
 
-.btn {
-  padding: 6px 10px;
-  border-radius: 6px;
-  border: none;
-  cursor: pointer;
-}
-
-.btn-primary {
-  background: var(--brand);
-  color: white;
-}
+/* Error */
+.form-error{margin-top:8px; color:var(--danger); font-weight:600}

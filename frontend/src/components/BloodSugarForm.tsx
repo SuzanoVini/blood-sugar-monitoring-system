@@ -1,5 +1,4 @@
-import React, { useState } from "react";
-import type { FormEvent } from "react";
+import React, { useState, type FormEvent } from "react";
 import api from "../services/apiService";
 
 interface BloodSugarReading {
@@ -10,40 +9,27 @@ interface BloodSugarReading {
   activity_notes?: string;
   symptoms?: string;
 }
-
 interface BloodSugarFormProps {
   onSaved?: (reading: BloodSugarReading) => void;
   defaultValues?: Partial<BloodSugarReading>;
 }
 
-/**
- * BloodSugarForm
- * Props:
- *  - onSaved: callback(reading) after successful save
- *  - defaultValues: optional for edit
- */
 const BloodSugarForm: React.FC<BloodSugarFormProps> = ({
   onSaved,
   defaultValues = {},
 }) => {
-  const [value, setValue] = useState<string>(
-    defaultValues.value?.toString() || ""
-  );
+  const [value, setValue] = useState(defaultValues.value?.toString() || "");
   const [unit, setUnit] = useState<"mg/dl" | "mmol/L">(
     defaultValues.unit || "mg/dl"
   );
-  const [datetime, setDatetime] = useState<string>(
+  const [datetime, setDatetime] = useState(
     defaultValues.datetime || new Date().toISOString().slice(0, 16)
   );
-  const [food, setFood] = useState<string>(defaultValues.food_notes || "");
-  const [activity, setActivity] = useState<string>(
-    defaultValues.activity_notes || ""
-  );
-  const [symptoms, setSymptoms] = useState<string>(
-    defaultValues.symptoms || ""
-  );
-  const [loading, setLoading] = useState<boolean>(false);
-  const [error, setError] = useState<string>("");
+  const [food, setFood] = useState(defaultValues.food_notes || "");
+  const [activity, setActivity] = useState(defaultValues.activity_notes || "");
+  const [symptoms, setSymptoms] = useState(defaultValues.symptoms || "");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -63,7 +49,7 @@ const BloodSugarForm: React.FC<BloodSugarFormProps> = ({
         symptoms,
       };
       const res = await api.createReading(payload);
-      if (onSaved) onSaved(res);
+      onSaved?.(res);
       setValue("");
       setFood("");
       setActivity("");
@@ -78,72 +64,104 @@ const BloodSugarForm: React.FC<BloodSugarFormProps> = ({
 
   return (
     <form className="card" onSubmit={handleSubmit}>
-      <h4>Enter Blood Sugar</h4>
-      <div>
-        <label>Value</label>
-        <br />
-        <input
-          type="number"
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
-          required
-        />
+      <div className="card-hd">
+        <h4>Enter Blood Sugar</h4>
       </div>
-      <div>
-        <label>Unit</label>
-        <br />
-        <select
-          value={unit}
-          onChange={(e) => setUnit(e.target.value as "mg/dl" | "mmol/L")}
-        >
-          <option value="mg/dl">mg/dl</option>
-          <option value="mmol/L">mmol/L</option>
-        </select>
-      </div>
-      <div>
-        <label>Date & Time</label>
-        <br />
-        <input
-          type="datetime-local"
-          value={datetime}
-          onChange={(e) => setDatetime(e.target.value)}
-          required
-        />
-      </div>
-      <div>
-        <label>Event - Food (comma separated)</label>
-        <br />
-        <input
-          type="text"
-          value={food}
-          onChange={(e) => setFood(e.target.value)}
-          placeholder="e.g. pasta, bread"
-        />
-      </div>
-      <div>
-        <label>Event - Activity (comma separated)</label>
-        <br />
-        <input
-          type="text"
-          value={activity}
-          onChange={(e) => setActivity(e.target.value)}
-          placeholder="e.g. exercise, stress"
-        />
-      </div>
-      <div>
-        <label>Symptoms / Notes</label>
-        <br />
-        <textarea
-          value={symptoms}
-          onChange={(e) => setSymptoms(e.target.value)}
-          rows={2}
-        />
-      </div>
-      {error && <div style={{ color: "red" }}>{error}</div>}
-      <div style={{ marginTop: 8 }}>
-        <button className="btn btn-primary" disabled={loading}>
-          {loading ? "Saving..." : "Save Reading"}
-        </button>
+
+      <div className="card-bd">
+        {/* Value + Unit inline */}
+        <div className="field-row">
+          <div className="input-group">
+            <label>Value</label>
+            <div className="with-addon">
+              <input
+                type="number"
+                className="input"
+                placeholder="e.g. 110"
+                value={value}
+                onChange={(e) => setValue(e.target.value)}
+                required
+              />
+              <div className="addon">
+                <select
+                  className="select addon-select"
+                  value={unit}
+                  onChange={(e) =>
+                    setUnit(e.target.value as "mg/dl" | "mmol/L")
+                  }
+                >
+                  <option value="mg/dl">mg/dl</option>
+                  <option value="mmol/L">mmol/L</option>
+                </select>
+              </div>
+            </div>
+            <div className="help">Use the selector to switch units.</div>
+          </div>
+
+          <div className="input-group">
+            <label>Date & Time</label>
+            <div className="with-addon">
+              <input
+                type="datetime-local"
+                className="input"
+                value={datetime}
+                onChange={(e) => setDatetime(e.target.value)}
+                required
+              />
+              <div className="addon addon-icon" aria-hidden>
+                🕑
+              </div>
+            </div>
+            <div className="help">When was the reading taken?</div>
+          </div>
+        </div>
+
+        {/* Food / Activity */}
+        <div className="field-row">
+          <div className="input-group">
+            <label>Food</label>
+            <input
+              type="text"
+              className="input"
+              value={food}
+              onChange={(e) => setFood(e.target.value)}
+              placeholder="e.g. pasta, bread"
+            />
+            <div className="help">Comma separated items.</div>
+          </div>
+
+          <div className="input-group">
+            <label>Activity</label>
+            <input
+              type="text"
+              className="input"
+              value={activity}
+              onChange={(e) => setActivity(e.target.value)}
+              placeholder="e.g. exercise, stress"
+            />
+            <div className="help">Comma separated activities.</div>
+          </div>
+        </div>
+
+        {/* Notes */}
+        <div className="input-group">
+          <label>Symptoms / Notes</label>
+          <textarea
+            className="textarea"
+            rows={3}
+            value={symptoms}
+            onChange={(e) => setSymptoms(e.target.value)}
+            placeholder="Any symptoms or context to note?"
+          />
+        </div>
+
+        {error && <div className="form-error">{error}</div>}
+
+        <div className="btn-row">
+          <button type="submit" className="btn" disabled={loading}>
+            {loading ? "Saving..." : "Save Reading"}
+          </button>
+        </div>
       </div>
     </form>
   );

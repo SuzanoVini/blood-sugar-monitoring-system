@@ -31,9 +31,6 @@ interface TrendsChartProps {
   readings?: Reading[];
 }
 
-/**
- * TrendsChart - displays blood sugar trends
- */
 const TrendsChart: React.FC<TrendsChartProps> = ({ readings = [] }) => {
   const sorted = readings
     .slice()
@@ -53,6 +50,8 @@ const TrendsChart: React.FC<TrendsChartProps> = ({ readings = [] }) => {
           fill: false,
           tension: 0.2,
           pointRadius: 3,
+          borderColor: "#2b7cff",
+          backgroundColor: "#2b7cff",
         },
       ],
     }),
@@ -69,8 +68,8 @@ const TrendsChart: React.FC<TrendsChartProps> = ({ readings = [] }) => {
   };
 
   return (
-    <div className="card">
-      <h4>Trend</h4>
+    <div className="bg-white p-4 rounded-xl shadow-lg mb-4">
+      <h4 className="text-lg font-semibold text-blue-600 mb-2">Trend</h4>
       <Line data={data} options={options} />
     </div>
   );

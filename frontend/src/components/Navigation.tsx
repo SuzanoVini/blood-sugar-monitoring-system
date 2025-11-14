@@ -3,12 +3,10 @@ import authService from "../services/authService";
 
 interface NavigationProps {
   onNavigate: (page: string) => void;
+  current?: "patient" | "specialist" | "staff" | "admin";
 }
 
-/**
- * Navigation component for the app.
- */
-const Navigation: React.FC<NavigationProps> = ({ onNavigate }) => {
+const Navigation: React.FC<NavigationProps> = ({ onNavigate, current }) => {
   const handleLogout = async () => {
     try {
       await authService.logout();
@@ -18,33 +16,38 @@ const Navigation: React.FC<NavigationProps> = ({ onNavigate }) => {
     }
   };
 
+  const Item: React.FC<{ id: NavigationProps["current"]; label: string }> = ({
+    id,
+    label,
+  }) => (
+    <button
+      className={`topnav-item ${current === id ? "active" : ""}`}
+      onClick={() => onNavigate(id!)}
+    >
+      {label}
+    </button>
+  );
+
   return (
-    <nav className="navigation">
-      <h3>Blood Sugar Monitor</h3>
-      <ul style={{ listStyle: "none", padding: 0 }}>
-        <li>
-          <button onClick={() => onNavigate("patient")}>
-            Patient Dashboard
-          </button>
-        </li>
-        <li>
-          <button onClick={() => onNavigate("specialist")}>
-            Specialist Dashboard
-          </button>
-        </li>
-        <li>
-          <button onClick={() => onNavigate("staff")}>Clinic Staff</button>
-        </li>
-        <li>
-          <button onClick={() => onNavigate("admin")}>Admin</button>
-        </li>
-      </ul>
-      <div style={{ marginTop: 16 }}>
-        <button className="btn btn-primary" onClick={handleLogout}>
+    <header className="topbar">
+      <div className="brand">
+        <span className="dot" />
+        <span>Blood Sugar Monitor</span>
+      </div>
+
+      <nav className="topnav">
+        <Item id="patient" label="Patient Dashboard" />
+        <Item id="specialist" label="Specialist Dashboard" />
+        <Item id="staff" label="Clinic Staff" />
+        <Item id="admin" label="Admin" />
+      </nav>
+
+      <div className="topbar-right">
+        <button className="btn ghost" onClick={handleLogout}>
           Logout
         </button>
       </div>
-    </nav>
+    </header>
   );
 };
 

@@ -37,16 +37,18 @@ const PatientDashboard: React.FC = () => {
   };
 
   return (
-    <div style={{ padding: 8 }}>
-      <h2>Patient Dashboard</h2>
-      <div
-        style={{ display: "grid", gridTemplateColumns: "1fr 360px", gap: 12 }}
-      >
-        <div>
+    <div className="container">
+      <h2 className="page-title">Patient Dashboard</h2>
+
+      <div className="dashboard-grid">
+        {/* Left column */}
+        <div className="stack">
           <BloodSugarForm onSaved={refreshAll} />
           <ReadingsList refreshSignal={signal} />
         </div>
-        <div>
+
+        {/* Right column */}
+        <div className="stack">
           <AlertNotification />
           <AISuggestions refreshSignal={signal} />
           <TrendsChart readings={readingsForChart} />
