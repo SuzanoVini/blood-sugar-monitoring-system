@@ -1,70 +1,103 @@
 import React, { useState } from "react";
-import api from "../services/apiService";
+import { useNavigate } from "react-router-dom";
+import authService from "../services/authService";
 
-interface AuthenticationDashboardProps {}
-
-/**
- * AuthenticationDashboard - handles user login and authentication.
- */
-const AuthenticationDashboard: React.FC<AuthenticationDashboardProps> = () => {
-  const [email, setEmail] = useState<string>("");
-  const [password, setPassword] = useState<string>("");
-  const [loading, setLoading] = useState<boolean>(false);
+const AuthenticationDashboard: React.FC = () => {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const navigate = useNavigate();
 
   const handleLogin = async () => {
     setLoading(true);
     setError(null);
+
+    if (!email || !password) {
+      setError("Please enter both email and password.");
+      setLoading(false);
+      return;
+    }
+
     try {
-      const success = await api.login(email, password);
-      if (success) {
-        alert("Login successful!");
-        window.location.href = "/dashboard"; // Adjust route as needed
+      const { token, user } = await authService.login(email, password);
+
+      if (token) {
+        console.log("Login successful, user:", user);
+        alert(`Welcome back, ${user.name}!`);
+
+        // Normalize role to lowercase and replace spaces with underscores
+        const role = user.role?.toLowerCase().replace(" ", "_");
+
+        // Role-based default route
+        const roleDefaultRoute: { [key: string]: string } = {
+          patient: "/dashboard",
+          specialist: "/specialist",
+          clinic_staff: "/staff",
+          administrator: "/admin",
+        };
+
+        const redirectRoute = roleDefaultRoute[role] || "/login";
+        console.log("Redirecting to:", redirectRoute);
+        navigate(redirectRoute);
       } else {
         setError("Invalid email or password.");
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Login failed", err);
-      setError("Something went wrong. Please try again.");
+      setError(err.response?.data?.message || "Something went wrong.");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="container">
-      <h2 className="page-title">Login</h2>
-      <div className="card" style={{ maxWidth: 400, margin: "0 auto" }}>
-        <div>
+    <div style={{ maxWidth: 420, margin: "40px auto", textAlign: "center" }}>
+      <h2>Login</h2>
+      <div
+        style={{ padding: 20, borderRadius: 12, boxShadow: "0 0 10px #ccc" }}
+      >
+        <div style={{ marginBottom: 16, textAlign: "left" }}>
           <label>Email</label>
           <input
             type="email"
+            style={{ width: "100%", padding: 10, marginTop: 4 }}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="Enter your email"
           />
         </div>
-        <div style={{ marginTop: 12 }}>
+
+        <div style={{ marginBottom: 16, textAlign: "left" }}>
           <label>Password</label>
           <input
             type="password"
+            style={{ width: "100%", padding: 10, marginTop: 4 }}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="Enter your password"
           />
         </div>
-        {error && (
-          <div style={{ color: "red", marginTop: 8 }}>{error}</div>
-        )}
-        <div style={{ marginTop: 16 }}>
-          <button
-            className="btn btn-primary"
-            onClick={handleLogin}
-            disabled={loading}
-          >
-            {loading ? "Logging in..." : "Login"}
-          </button>
-        </div>
+
+        {error && <div style={{ color: "red", marginBottom: 12 }}>{error}</div>}
+
+        <button
+          onClick={handleLogin}
+          disabled={loading}
+          style={{
+            width: "100%",
+            padding: 12,
+            borderRadius: 8,
+            fontWeight: 600,
+            backgroundColor: "#2b7cff",
+            color: "#fff",
+            border: "none",
+            cursor: loading ? "not-allowed" : "pointer",
+          }}
+        >
+          {loading ? "Logging in..." : "Login"}
+        </button>
       </div>
     </div>
   );

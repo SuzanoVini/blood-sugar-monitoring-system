@@ -1,30 +1,32 @@
-/**
- * Minimal authService - keeps token in localStorage.
- * Replace with backend JWT exchange for production.
- */
+// services/authService.ts
+import axios from "axios";
 
 const TOKEN_KEY = "bsm_token";
 
 interface LoginResponse {
   token: string;
+  user: any;
 }
 
-interface AuthService {
-  login: (email: string, password: string) => Promise<LoginResponse>;
-  logout: () => Promise<void>;
-  getToken: () => string | null;
-  isAuthenticated: () => boolean;
-}
-
-const authService: AuthService = {
-  login: async (email: string, password: string) => {
-    // Replace with real server call; here we mock success for demo
-    const fakeToken = "demo-token";
-    localStorage.setItem(TOKEN_KEY, fakeToken);
-    return { token: fakeToken };
+const authService = {
+  login: async (email: string, password: string): Promise<LoginResponse> => {
+    const response = await axios.post("/api/auth/login", { email, password });
+    const { token, user } = response.data.data;
+    if (token) {
+      localStorage.setItem(TOKEN_KEY, token);
+    }
+    return { token, user };
   },
 
-  logout: async () => {
+  logout: async (): Promise<void> => {
+    const token = localStorage.getItem(TOKEN_KEY);
+    if (token) {
+      await axios.post(
+        "/api/auth/logout",
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+    }
     localStorage.removeItem(TOKEN_KEY);
   },
 

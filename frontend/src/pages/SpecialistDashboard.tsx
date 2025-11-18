@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import api from "../services/apiService";
+import authService from "../services/authService";
 
 interface Patient {
   patient_id: string | number;
@@ -12,6 +14,7 @@ interface Patient {
  */
 const SpecialistDashboard: React.FC = () => {
   const [patients, setPatients] = useState<Patient[]>([]);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const load = async () => {
@@ -25,9 +28,42 @@ const SpecialistDashboard: React.FC = () => {
     load();
   }, []);
 
+  const handleLogout = async () => {
+    try {
+      await authService.logout();
+      navigate("/login");
+    } catch (err) {
+      console.error("Logout failed:", err);
+    }
+  };
+
   return (
     <div>
-      <h2>Specialist Dashboard</h2>
+      {/* Header with Logout Button */}
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+        }}
+      >
+        <h2>Specialist Dashboard</h2>
+        <button
+          onClick={handleLogout}
+          style={{
+            backgroundColor: "#ff4d4d",
+            border: "none",
+            padding: "10px 16px",
+            borderRadius: "8px",
+            color: "#fff",
+            cursor: "pointer",
+            fontWeight: "600",
+          }}
+        >
+          Logout
+        </button>
+      </div>
+
       <div className="card">
         <h4>Assigned Patients</h4>
         {patients.length === 0 ? (

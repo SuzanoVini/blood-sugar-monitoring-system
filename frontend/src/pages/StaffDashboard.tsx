@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import api from "../services/apiService";
+import authService from "../services/authService";
 
 interface Thresholds {
   normal_low: number;
@@ -23,6 +25,8 @@ const StaffDashboard: React.FC = () => {
     abnormal_high: 1000,
   });
   const [saving, setSaving] = useState<boolean>(false);
+
+  const navigate = useNavigate();
 
   useEffect(() => {
     const load = async () => {
@@ -49,9 +53,42 @@ const StaffDashboard: React.FC = () => {
     }
   };
 
+  const handleLogout = async () => {
+    try {
+      await authService.logout();
+      navigate("/login");
+    } catch (err) {
+      console.error("Logout failed:", err);
+    }
+  };
+
   return (
     <div>
-      <h2>Clinic Staff</h2>
+      {/* Header with Logout Button */}
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+        }}
+      >
+        <h2>Clinic Staff</h2>
+        <button
+          onClick={handleLogout}
+          style={{
+            backgroundColor: "#ff4d4d",
+            border: "none",
+            padding: "10px 16px",
+            borderRadius: "8px",
+            color: "#fff",
+            cursor: "pointer",
+            fontWeight: "600",
+          }}
+        >
+          Logout
+        </button>
+      </div>
+
       <div className="card">
         <h4>Category Thresholds</h4>
         <div>

@@ -1,7 +1,9 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import api from "../services/apiService";
 import { generateReport } from "../utils/reportGenerator";
 import type { Report } from "../utils/reportGenerator";
+import authService from "../services/authService";
 
 interface AdminDashboardProps {}
 
@@ -14,9 +16,19 @@ const AdminDashboard: React.FC<AdminDashboardProps> = () => {
   const [endDate, setEndDate] = useState<string>("");
   const [report, setReport] = useState<Report | null>(null);
 
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    try {
+      await authService.logout();
+      navigate("/login");
+    } catch (err) {
+      console.error("Logout failed:", err);
+    }
+  };
+
   const handleGenerate = async () => {
     try {
-      // fetch readings and AI analyses, then create report
       const readings = await api.getAllReadings(startDate, endDate);
       const analyses = await api.getAIPatternAnalyses(startDate, endDate);
       const r: Report = generateReport({
@@ -27,7 +39,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = () => {
         analyses,
       });
       setReport(r);
-      // optionally post to server
       await api.saveReport(r);
       alert("Report generated and saved.");
     } catch (err) {
@@ -38,7 +49,31 @@ const AdminDashboard: React.FC<AdminDashboardProps> = () => {
 
   return (
     <div>
-      <h2>Administrator</h2>
+      {/* Header with Logout Button */}
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+        }}
+      >
+        <h2>Administrator</h2>
+        <button
+          onClick={handleLogout}
+          style={{
+            backgroundColor: "#ff4d4d",
+            border: "none",
+            padding: "10px 16px",
+            borderRadius: "8px",
+            color: "#fff",
+            cursor: "pointer",
+            fontWeight: "600",
+          }}
+        >
+          Logout
+        </button>
+      </div>
+
       <div className="card">
         <h4>Create Report</h4>
         <div>
