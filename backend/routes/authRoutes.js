@@ -167,6 +167,18 @@ router.post('/login', (req, res) => {
         });
       }
 
+      // Calculate session expiry time from JWT_EXPIRES_IN
+      const expiryMs = parseExpiresIn(expiresIn);
+      const expiryDate = new Date(Date.now() + expiryMs);
+
+      // Create session record (non-blocking)
+      authAPI.createSession(db, result.User_ID, expiryDate, (sessionErr, sessionResult) => {
+        if (sessionErr) {
+          console.warn('Failed to create session record:', sessionErr.message);
+        }
+        // Continue regardless of session creation result
+      });
+
       res.json({
         success: true,
         message: 'Login successful',
@@ -180,13 +192,49 @@ router.post('/login', (req, res) => {
 });
 
 /**
+ * Helper: Parse JWT expiresIn string to milliseconds
+ * @param {string} expiresIn - e.g., '1h', '7d', '60s', '30m'
+ * @returns {number} - Milliseconds
+ */
+function parseExpiresIn(expiresIn) {
+  const match = expiresIn.match(/^(\d+)([smhd])$/);
+  if (!match) return 3600000; // Default 1 hour
+
+  const value = parseInt(match[1]);
+  const unit = match[2];
+
+  switch (unit) {
+    case 's': return value * 1000;
+    case 'm': return value * 60 * 1000;
+    case 'h': return value * 60 * 60 * 1000;
+    case 'd': return value * 24 * 60 * 60 * 1000;
+    default: return 3600000;
+  }
+}
+
+/**
  * POST /api/auth/logout
  * User logout (stateless endpoint)
  * Body: user_id (optional, for logging purposes)
+ * Header: Authorization: Bearer <token> (optional)
  */
 router.post('/logout', (req, res) => {
   const db = req.app.locals.db;
-  const userId = req.body.user_id || null;
+  let userId = req.body.user_id || null;
+
+  // Try to extract user_id from JWT token if present
+  if (!userId && req.headers.authorization) {
+    try {
+      const token = req.headers.authorization.replace('Bearer ', '');
+      const secret = process.env.JWT_SECRET || null;
+      if (secret) {
+        const decoded = jwt.verify(token, secret);
+        userId = decoded.user_id;
+      }
+    } catch (err) {
+      // Token invalid or expired, continue without user_id
+    }
+  }
 
   if (userId) {
     authAPI.logoutUser(db, userId, (err, result) => {
@@ -198,6 +246,14 @@ router.post('/logout', (req, res) => {
           error: err.message
         });
       }
+
+      // Destroy session record (non-blocking)
+      authAPI.destroySession(db, userId, (sessionErr, sessionResult) => {
+        if (sessionErr) {
+          console.warn('Failed to destroy session record:', sessionErr.message);
+        }
+        // Continue regardless of session destroy result
+      });
 
       res.json({
         success: true,
