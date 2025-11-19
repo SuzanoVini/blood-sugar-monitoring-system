@@ -22,54 +22,13 @@ function validateStaffId(req, res, next) {
   next();
 }
 
-// Middleware to verify staff role (interim solution until auth middleware)
-function verifyStaffRole(req, res, next) {
-  const db = req.app.locals.db;
-
-  const query = 'SELECT Role, Status FROM User WHERE User_ID = ?';
-  db.query(query, [req.staffId], (err, results) => {
-    if (err) {
-      console.error('Error verifying staff role:', err);
-      return res.status(500).json({
-        success: false,
-        message: 'Error verifying staff role'
-      });
-    }
-
-    if (results.length === 0) {
-      return res.status(403).json({
-        success: false,
-        message: 'Access forbidden: User not found'
-      });
-    }
-
-    const user = results[0];
-
-    if (user.Role !== 'Clinic_Staff') {
-      return res.status(403).json({
-        success: false,
-        message: 'Access forbidden: Clinic Staff role required'
-      });
-    }
-
-    if (user.Status !== 'Active') {
-      return res.status(403).json({
-        success: false,
-        message: 'Access forbidden: Account is not active'
-      });
-    }
-
-    next();
-  });
-}
-
 /**
  * GET /api/staff/thresholds
  * Get current system threshold settings
  * Query: staff_id (required)
  * Response: { success, message, data: { Threshold_ID, Normal_Low, Normal_High, ..., Effective_Date } }
  */
-router.get('/thresholds', validateStaffId, verifyStaffRole, (req, res) => {
+router.get('/thresholds', validateStaffId, (req, res) => {
   const db = req.app.locals.db;
 
   thresholdAPI.getSystemThresholds(db, (err, thresholds) => {
@@ -103,7 +62,7 @@ router.get('/thresholds', validateStaffId, verifyStaffRole, (req, res) => {
  *       Abnormal_Low, Abnormal_High (all required)
  * Response: { success, message, data: { threshold_id } }
  */
-router.put('/thresholds', validateStaffId, verifyStaffRole, (req, res) => {
+router.put('/thresholds', validateStaffId, (req, res) => {
   const db = req.app.locals.db;
 
   const {
@@ -243,7 +202,7 @@ router.put('/thresholds', validateStaffId, verifyStaffRole, (req, res) => {
  * Response: { success, message, data: [{ Patient_ID, Name, Email, Healthcare_Number, Date_Of_Birth,
  *             Status, Threshold_Normal_Low, Threshold_Normal_High }] }
  */
-router.get('/patients', validateStaffId, verifyStaffRole, (req, res) => {
+router.get('/patients', validateStaffId, (req, res) => {
   const db = req.app.locals.db;
 
   // Get optional pagination parameters
