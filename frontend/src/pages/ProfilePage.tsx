@@ -3,8 +3,9 @@
 // Purpose: A page for users to view and update their profile information.
 
 import React, { useState, useEffect, FormEvent } from 'react';
+import { useNavigate } from 'react-router-dom';
 // Assuming an apiService file exists for making API calls.
-import apiService from '../services/apiService'; 
+import apiService from '../services/apiService';
 // Assuming an authService file exists for getting user info.
 import authService from '../services/authService';
 
@@ -16,6 +17,7 @@ interface UserProfile {
 }
 
 const ProfilePage: React.FC = () => {
+  const navigate = useNavigate();
   const [profile, setProfile] = useState<Partial<UserProfile>>({});
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -79,13 +81,58 @@ const ProfilePage: React.FC = () => {
     }
   };
 
+  const handleBack = () => {
+    // Navigate back to the appropriate dashboard based on user role
+    const currentUser = authService.getCurrentUser();
+    if (currentUser && currentUser.role) {
+      const normalizedRole = currentUser.role.toLowerCase().replace(/\s+/g, '_');
+      const roleRoutes: { [key: string]: string } = {
+        patient: '/dashboard',
+        specialist: '/specialist',
+        clinic_staff: '/staff',
+        administrator: '/admin',
+      };
+      const route = roleRoutes[normalizedRole] || '/dashboard';
+      navigate(route);
+    } else {
+      // Fallback to previous page
+      navigate(-1);
+    }
+  };
+
   if (loading && !profile.name) {
     return <div className="container"><p>Loading profile...</p></div>;
   }
 
   return (
     <div className="container">
-      <h2>My Profile</h2>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '18px' }}>
+        <button
+          onClick={handleBack}
+          className="btn secondary"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            padding: '10px 16px'
+          }}
+        >
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M19 12H5M12 19l-7-7 7-7"/>
+          </svg>
+          Back
+        </button>
+        <h2 style={{ margin: 0 }}>My Profile</h2>
+      </div>
       <div className="card">
         <div className="card-bd">
           <form onSubmit={handleSubmit}>
