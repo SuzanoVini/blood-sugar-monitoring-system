@@ -22,38 +22,13 @@ function validateAdminId(req, res, next) {
   next();
 }
 
-// Middleware to verify admin role (interim solution until auth middleware)
-function verifyAdminRole(req, res, next) {
-  const db = req.app.locals.db;
-
-  const query = 'SELECT Role FROM User WHERE User_ID = ? AND Status = ?';
-  db.query(query, [req.adminId, 'Active'], (err, results) => {
-    if (err) {
-      console.error('Error verifying admin role:', err);
-      return res.status(500).json({
-        success: false,
-        message: 'Error verifying admin role'
-      });
-    }
-
-    if (results.length === 0 || results[0].Role !== 'Administrator') {
-      return res.status(403).json({
-        success: false,
-        message: 'Access forbidden: Administrator role required'
-      });
-    }
-
-    next();
-  });
-}
-
 /**
  * POST /api/admin/users/specialist
  * Create new specialist account
  * Body: admin_id (required), name, email, password, workingId, specialization, phone (optional)
  * Response: { success, message, data }
  */
-router.post('/users/specialist', validateAdminId, verifyAdminRole, (req, res) => {
+router.post('/users/specialist', validateAdminId, (req, res) => {
   const db = req.app.locals.db;
 
   // Validate required fields
@@ -123,7 +98,7 @@ router.post('/users/specialist', validateAdminId, verifyAdminRole, (req, res) =>
  * Body: admin_id (required), name, email, password, workingId, department, phone (optional)
  * Response: { success, message, data }
  */
-router.post('/users/staff', validateAdminId, verifyAdminRole, (req, res) => {
+router.post('/users/staff', validateAdminId, (req, res) => {
   const db = req.app.locals.db;
 
   // Validate required fields
@@ -194,7 +169,7 @@ router.post('/users/staff', validateAdminId, verifyAdminRole, (req, res) => {
  * Query: admin_id (required)
  * Response: { success, message, data }
  */
-router.delete('/users/:id', validateAdminId, verifyAdminRole, (req, res) => {
+router.delete('/users/:id', validateAdminId, (req, res) => {
   const db = req.app.locals.db;
   const userId = parseInt(req.params.id);
 
@@ -236,7 +211,7 @@ router.delete('/users/:id', validateAdminId, verifyAdminRole, (req, res) => {
  * Body: admin_id (required), period_type (Monthly/Yearly), period_start, period_end
  * Response: { success, message, data }
  */
-router.post('/reports/generate', validateAdminId, verifyAdminRole, (req, res) => {
+router.post('/reports/generate', validateAdminId, (req, res) => {
   const db = req.app.locals.db;
 
   // Validate required fields
@@ -357,7 +332,7 @@ router.post('/reports/generate', validateAdminId, verifyAdminRole, (req, res) =>
  * Query: admin_id (required)
  * Response: { success, message, data }
  */
-router.get('/reports/:id', validateAdminId, verifyAdminRole, (req, res) => {
+router.get('/reports/:id', validateAdminId, (req, res) => {
   const db = req.app.locals.db;
   const reportId = parseInt(req.params.id);
 
@@ -399,7 +374,7 @@ router.get('/reports/:id', validateAdminId, verifyAdminRole, (req, res) => {
  * Query: admin_id (required)
  * Response: { success, message, data }
  */
-router.get('/stats', validateAdminId, verifyAdminRole, (req, res) => {
+router.get('/stats', validateAdminId, (req, res) => {
   const db = req.app.locals.db;
 
   adminAPI.getSystemStats(db, (err, stats) => {
