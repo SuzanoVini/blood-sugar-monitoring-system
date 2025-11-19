@@ -373,6 +373,121 @@ function createSuggestion(db, patientId, content, basedOnPattern, callback) {
 }
 
 /**
+ * Analyze patient reading patterns and generate AI suggestions
+ * @param {Object} db - Database connection
+ * @param {number} patientId - Patient ID
+ * @param {Function} callback - Callback function(err, suggestions)
+ */
+function generateAISuggestions(db, patientId, callback) {
+  // Query abnormal readings from last 4 weeks
+  const query = `
+    SELECT Value, Food_Notes, Activity_Notes, Symptoms, DateTime
+    FROM Sugar_Reading
+    WHERE Patient_ID = ?
+      AND Category = 'Abnormal'
+      AND DateTime >= DATE_SUB(NOW(), INTERVAL 4 WEEK)
+    ORDER BY DateTime DESC
+  `;
+
+  db.query(query, [patientId], (err, abnormalReadings) => {
+    if (err) return callback(err, null);
+
+    const suggestions = [];
+
+    // Check if patient has significant abnormal readings
+    if (abnormalReadings.length >= 3) {
+      // Analyze food patterns
+      const foodKeywords = {};
+      const activityKeywords = {};
+
+      abnormalReadings.forEach(reading => {
+        // Extract food keywords
+        if (reading.Food_Notes) {
+          const foods = reading.Food_Notes.toLowerCase();
+          ['pizza', 'pasta', 'rice', 'bread', 'dessert', 'soda', 'cake', 'sugar', 'candy', 'beer', 'alcohol'].forEach(keyword => {
+            if (foods.includes(keyword)) {
+              foodKeywords[keyword] = (foodKeywords[keyword] || 0) + 1;
+            }
+          });
+        }
+
+        // Extract activity keywords
+        if (reading.Activity_Notes) {
+          const activities = reading.Activity_Notes.toLowerCase();
+          ['exercise', 'running', 'gym', 'workout', 'walking', 'stress', 'sleep', 'rest'].forEach(keyword => {
+            if (activities.includes(keyword)) {
+              activityKeywords[keyword] = (activityKeywords[keyword] || 0) + 1;
+            }
+          });
+        }
+      });
+
+      const totalAbnormal = abnormalReadings.length;
+
+      // Generate suggestions for food triggers (>40% correlation)
+      Object.keys(foodKeywords).forEach(food => {
+        const frequency = foodKeywords[food] / totalAbnormal;
+        if (frequency > 0.4) {
+          const percentage = Math.round(frequency * 100);
+          suggestions.push({
+            content: `Your abnormal readings often occur after consuming ${food}. Consider moderating your ${food} intake or monitoring portion sizes.`,
+            pattern: `${percentage}% correlation with ${food} consumption (${foodKeywords[food]} of ${totalAbnormal} abnormal readings)`
+          });
+        }
+      });
+
+      // Generate suggestions for activity patterns (>40% correlation)
+      Object.keys(activityKeywords).forEach(activity => {
+        const frequency = activityKeywords[activity] / totalAbnormal;
+        if (frequency > 0.4) {
+          const percentage = Math.round(frequency * 100);
+          if (['stress', 'sleep'].includes(activity)) {
+            suggestions.push({
+              content: `${percentage}% of your abnormal readings are associated with ${activity} issues. Managing ${activity} may help stabilize your blood sugar levels.`,
+              pattern: `${percentage}% correlation with ${activity} (${activityKeywords[activity]} of ${totalAbnormal} abnormal readings)`
+            });
+          }
+        }
+      });
+
+      // General suggestion if high abnormal count but no specific patterns
+      if (suggestions.length === 0) {
+        suggestions.push({
+          content: `You have ${totalAbnormal} abnormal readings in the last 4 weeks. Consider reviewing your diet and activity patterns with your specialist to identify potential triggers.`,
+          pattern: `${totalAbnormal} abnormal readings in last 4 weeks`
+        });
+      }
+
+      // Limit to 3 most relevant suggestions
+      const limitedSuggestions = suggestions.slice(0, 3);
+
+      // Insert suggestions into database
+      let completed = 0;
+      const results = [];
+
+      limitedSuggestions.forEach(suggestion => {
+        createSuggestion(db, patientId, suggestion.content, suggestion.pattern, (err, result) => {
+          if (!err) results.push(result);
+          completed++;
+
+          if (completed === limitedSuggestions.length) {
+            callback(null, results);
+          }
+        });
+      });
+
+      // Handle case where no suggestions to insert
+      if (limitedSuggestions.length === 0) {
+        callback(null, []);
+      }
+    } else {
+      // Not enough abnormal readings to analyze
+      callback(null, []);
+    }
+  });
+}
+
+/**
  * Get statistics about patient's readings
  * @param {Object} db - Database connection
  * @param {number} patientId - Patient ID
@@ -454,6 +569,7 @@ module.exports = {
   deleteReading,
   getPatientSuggestions,
   createSuggestion,
+  generateAISuggestions,
   getReadingStatistics,
   verifyPatient
 };

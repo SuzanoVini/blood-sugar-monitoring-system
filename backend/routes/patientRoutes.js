@@ -318,6 +318,36 @@ router.get('/suggestions', attachPatientIdFromJWT, verifyPatientMiddleware, enfo
 });
 
 /**
+ * POST /api/patient/suggestions/generate
+ * Generate new AI suggestions based on patient reading patterns
+ * Body: patient_id (required)
+ */
+router.post('/suggestions/generate', attachPatientIdFromJWT, verifyPatientMiddleware, enforcePatientOwnership, (req, res) => {
+  const db = req.app.locals.db;
+  const patientId = req.patientId;
+
+  patientAPI.generateAISuggestions(db, patientId, (err, suggestions) => {
+    if (err) {
+      console.error('Error generating suggestions:', err);
+      return res.status(500).json({
+        success: false,
+        message: 'Error generating suggestions',
+        error: err.message
+      });
+    }
+
+    res.json({
+      success: true,
+      message: `Generated ${suggestions.length} new AI suggestions`,
+      data: {
+        suggestions: suggestions,
+        count: suggestions.length
+      }
+    });
+  });
+});
+
+/**
  * GET /api/patient/alerts
  * Get alerts for patient
  * Query params: patient_id (required)
