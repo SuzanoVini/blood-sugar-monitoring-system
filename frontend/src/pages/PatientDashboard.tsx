@@ -26,12 +26,14 @@ const PatientDashboard: React.FC = () => {
   const navigate = useNavigate();
 
   const refreshAll = async () => {
+    console.log("Refreshing all data...");
     setSignal((s) => s + 1);
     try {
       const data: Reading[] = await api.getReadings();
+      console.log("Fetched readings:", data);
       setReadingsForChart(data);
     } catch (err) {
-      console.error(err);
+      console.error("Error refreshing:", err);
     }
   };
 
