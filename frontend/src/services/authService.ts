@@ -48,6 +48,19 @@ const authService = {
   getToken: () => localStorage.getItem(TOKEN_KEY),
 
   isAuthenticated: () => !!localStorage.getItem(TOKEN_KEY),
+
+  getUserIdFromToken: (): number | null => {
+    const token = localStorage.getItem(TOKEN_KEY);
+    if (!token) return null;
+    try {
+      const payload = token.split('.')[1];
+      const decoded = JSON.parse(atob(payload));
+      return decoded.user_id || decoded.userId || null;
+    } catch (err) {
+      console.error("Failed to decode token:", err);
+      return null;
+    }
+  },
 };
 
 export default authService;
