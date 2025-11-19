@@ -3,6 +3,7 @@
 // Purpose: Manage patient alerts for abnormal readings
 
 const socketManager = require('../socketManager');
+const emailService = require('../services/emailService');
 
 // Count abnormal readings in the last 7 days for a patient
 function countAbnormalThisWeek(db, patientId, callback) {
@@ -49,19 +50,19 @@ function getPatientSpecialist(db, patientId, callback) {
 function createAlert(db, patientId, abnormalCount, specialistId, callback) {
   const weekStart = new Date();
   weekStart.setDate(weekStart.getDate() - 7);
-  
+
   const recipients = `Patient ${patientId}, Specialist ${specialistId}`;
-  
+
   const query = `
     INSERT INTO Alert (Patient_ID, Week_Start, Abnormal_Count, Sent_At, Recipients)
     VALUES (?, ?, ?, NOW(), ?)
   `;
-  
+
   const values = [patientId, weekStart, abnormalCount, recipients];
-  
+
   db.query(query, values, (err, results) => {
     if (err) return callback(err, null);
-    
+
     const alertData = {
       alert_id: results.insertId,
       patient_id: patientId,
@@ -70,9 +71,47 @@ function createAlert(db, patientId, abnormalCount, specialistId, callback) {
       recipients: recipients,
       sent_at: new Date()
     };
-    
+
     console.log(`Alert created - ID: ${alertData.alert_id}, Patient: ${patientId}`);
-    callback(null, alertData);
+
+    // Fetch email addresses for patient and specialist
+    const userIds = [patientId];
+    if (specialistId) {
+      userIds.push(specialistId);
+    }
+
+    const emailQuery = `SELECT Email FROM User WHERE User_ID IN (?) AND Status = 'Active'`;
+    db.query(emailQuery, [userIds], (emailErr, emailResults) => {
+      if (emailErr || !emailResults || emailResults.length === 0) {
+        console.warn(`Could not fetch emails for alert ${alertData.alert_id}: ${emailErr ? emailErr.message : 'No active users found'}`);
+        return callback(null, alertData);
+      }
+
+      const emailAddresses = emailResults.map(row => row.Email);
+
+      // Compose email
+      const subject = 'Critical Blood Sugar Alert';
+      const html = `
+        <html>
+          <body style="font-family: Arial, sans-serif; color: #333;">
+            <h2 style="color: #d9534f;">Critical Blood Sugar Alert</h2>
+            <p>Patient ID <strong>${patientId}</strong> has logged <strong>${abnormalCount}</strong> abnormal blood sugar readings in the past 7 days.</p>
+            <p>Please review the patient's readings and take appropriate action.</p>
+          </body>
+        </html>
+      `;
+
+      // Send email via emailService
+      emailService.sendAlertEmail(emailAddresses, subject, html, (sendErr, sendResult) => {
+        if (sendErr) {
+          console.warn(`Email send failed for alert ${alertData.alert_id}: ${sendErr.message}`);
+        } else {
+          console.log(`Alert email sent successfully for alert ${alertData.alert_id} to ${emailAddresses.length} recipient(s)`);
+        }
+        // Continue without failing the API flow
+        callback(null, alertData);
+      });
+    });
   });
 }
 
