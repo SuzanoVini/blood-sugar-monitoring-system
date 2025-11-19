@@ -7,6 +7,8 @@ import PatientDashboard from "../pages/PatientDashboard";
 import SpecialistDashboard from "../pages/SpecialistDashboard";
 import AdminDashboard from "../pages/AdminDashboard";
 import StaffDashboard from "../pages/StaffDashboard";
+import ProfilePage from "../pages/ProfilePage"; // Import ProfilePage
+import PatientDetailsPage from "../pages/PatientDetailsPage"; // Import PatientDetailsPage
 
 const Navigation: React.FC = () => {
   const isLoggedIn = authService.isAuthenticated();
@@ -52,8 +54,10 @@ const Navigation: React.FC = () => {
       {/* Protected Routes */}
       {isLoggedIn && (
         <>
+          <Route path="/profile" element={<ProfilePage />} /> {/* Add ProfilePage route */}
           <Route path="/dashboard" element={<PatientDashboard />} />
           <Route path="/specialist" element={<SpecialistDashboard />} />
+          <Route path="/specialist/patient/:patientId" element={<PatientDetailsPage />} /> {/* Add PatientDetailsPage route */}
           <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/staff" element={<StaffDashboard />} />
 
