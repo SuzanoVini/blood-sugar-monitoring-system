@@ -63,8 +63,18 @@ function getPatientReadings(db, patientId, filters, callback) {
     }
   }
 
+  if (process.env.NODE_ENV !== 'production') {
+    console.log('getPatientReadings query:', query);
+    console.log('getPatientReadings params:', queryParams);
+  }
+
   db.query(query, queryParams, (err, results) => {
     if (err) return callback(err, null);
+
+    if (process.env.NODE_ENV !== 'production') {
+      console.log(`getPatientReadings: Found ${results.length} readings for patient ${patientId}`);
+    }
+
     callback(null, results);
   });
 }
