@@ -13,6 +13,7 @@ import AISuggestions from '../components/AISuggestions';
 import AlertNotification from '../components/AlertNotification';
 import TrendsChart from '../components/TrendsChart';
 import FeedbackForm from '../components/FeedbackForm';
+import PatientFeedbackList from '../components/PatientFeedbackList';
 
 // Interfaces
 interface Reading {
@@ -106,6 +107,7 @@ const PatientDetailsPage: React.FC = () => {
       <div className="dashboard-grid">
         <div className="stack">
           {specialistId && <FeedbackForm patientId={patientIdNum} specialistId={specialistId} onFeedbackSubmitted={refreshData} />}
+          {specialistId && <PatientFeedbackList patientId={patientIdNum} refreshSignal={signal} />}
           <AlertNotification />
           <AISuggestions refreshSignal={signal} />
         </div>
