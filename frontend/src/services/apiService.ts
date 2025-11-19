@@ -1,4 +1,5 @@
 import axios from "axios";
+import authService from "./authService";
 
 /**
  * apiService - single place for REST interactions
@@ -11,6 +12,8 @@ const axiosInstance = axios.create({
   timeout: 8000,
   headers: { "Content-Type": "application/json" }
 });
+
+axiosInstance.interceptors.request.use(config => { const token = authService.getToken(); if (token) { config.headers.Authorization = 'Bearer ' + token; } return config; });
 
 // Helper: return data or fallback
 interface ApiResponse<T = any> {
@@ -31,7 +34,7 @@ export default {
   // readings
   async getReadings() {
     try {
-      const res = await axiosInstance.get("/readings");
+      const res = await axiosInstance.get("/patient/readings");
       return unwrap(res);
     } catch (err) {
       // fallback: return empty array for dev without backend
@@ -45,12 +48,12 @@ export default {
   },
 
   async createReading(payload: Record<string, any>) {
-    const res = await axiosInstance.post("/readings", payload);
+    const res = await axiosInstance.post("/patient/readings", payload);
     return unwrap(res);
   },
 
   async deleteReading(id: number | string): Promise<any> {
-    const res = await axiosInstance.delete<ApiResponse<any>>(`/readings/${id}`);
+    const res = await axiosInstance.delete<ApiResponse<any>>(`/patient/readings/${id}`);
     return unwrap(res);
   },
 
@@ -67,7 +70,7 @@ export default {
 
   // alerts
   async getAlerts() {
-    const res = await axiosInstance.get("/alerts");
+    const res = await axiosInstance.get("/patient/alerts");
     return unwrap(res);
   },
 
