@@ -1,5 +1,5 @@
 // api/authAPI.js
-// Author: Vnicius Suzano
+// Author: Vinicius Suzano
 // Purpose: API functions for authentication operations including user registration,
 //          login, logout, and profile retrieval
 
@@ -57,7 +57,9 @@ function registerPatient(db, userData, callback) {
             // Rollback: Delete the user record if patient insert fails
             db.query('DELETE FROM User WHERE User_ID = ?', [userId], (deleteErr) => {
               if (deleteErr) {
-                console.error('Error rolling back user creation:', deleteErr);
+                if (process.env.NODE_ENV !== 'production') {
+                  console.error('Error rolling back user creation:', deleteErr);
+                }
               }
               return callback(err, null);
             });
@@ -73,7 +75,9 @@ function registerPatient(db, userData, callback) {
             Status: 'Active'
           };
 
-          console.log(`New patient registered - ID: ${userId}, Email: ${email}`);
+          if (process.env.NODE_ENV !== 'production') {
+            console.log('New patient registered', { user_id: userId });
+          }
           callback(null, profile);
         });
       });
@@ -126,7 +130,9 @@ function loginUser(db, email, password, callback) {
         Status: user.Status
       };
 
-      console.log(`User logged in - ID: ${user.User_ID}, Email: ${email}`);
+      if (process.env.NODE_ENV !== 'production') {
+        console.log('User login', { user_id: user.User_ID });
+      }
       callback(null, profile);
     });
   });
@@ -178,7 +184,9 @@ function getUserProfile(db, userId, callback) {
 function logoutUser(db, userId, callback) {
   // This is a stateless endpoint - no session management yet
   // Just log the logout event and return success
-  console.log(`User logged out - ID: ${userId}`);
+  if (process.env.NODE_ENV !== 'production') {
+    console.log('User logout', { user_id: userId });
+  }
   callback(null, { success: true, message: 'Logged out successfully' });
 }
 
