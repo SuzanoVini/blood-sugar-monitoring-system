@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom"; // Import Link
 import api from "../services/apiService";
 import authService from "../services/authService";
 
@@ -70,23 +70,29 @@ const StaffDashboard: React.FC = () => {
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
+          gap: '1rem', // Added gap for spacing
         }}
       >
-        <h2>Clinic Staff</h2>
-        <button
-          onClick={handleLogout}
-          style={{
-            backgroundColor: "#ff4d4d",
-            border: "none",
-            padding: "10px 16px",
-            borderRadius: "8px",
-            color: "#fff",
-            cursor: "pointer",
-            fontWeight: "600",
-          }}
-        >
-          Logout
-        </button>
+        <h2>Clinic Staff Dashboard</h2>
+        <div style={{display: 'flex', gap: '1rem', alignItems: 'center'}}>
+          <Link to="/profile" className="btn">
+            My Profile
+          </Link>
+          <button
+            onClick={handleLogout}
+            style={{
+              backgroundColor: "#ff4d4d",
+              border: "none",
+              padding: "10px 16px",
+              borderRadius: "8px",
+              color: "#fff",
+              cursor: "pointer",
+              fontWeight: "600",
+            }}
+          >
+            Logout
+          </button>
+        </div>
       </div>
 
       <div className="card">
