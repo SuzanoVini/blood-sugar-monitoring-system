@@ -79,7 +79,7 @@ const SpecialistDashboard: React.FC = () => {
             {patients.map((p) => (
               <li key={p.patient_id}>
                 <Link to={`/specialist/patient/${p.patient_id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-                  {p.name} — {p.healthcare_number}
+                  {p.name} - {p.healthcare_number}
                 </Link>
               </li>
             ))}
@@ -91,3 +91,4 @@ const SpecialistDashboard: React.FC = () => {
 };
 
 export default SpecialistDashboard;
+

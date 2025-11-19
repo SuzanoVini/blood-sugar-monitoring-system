@@ -72,12 +72,32 @@ export default {
 
   // admin & staff
   async getCategoryThreshold() {
-    const res = await axiosInstance.get("/threshold");
-    return unwrap(res);
+    // Backend route: GET /api/thresholds (Clinic_Staff/Admin only)
+    const res = await axiosInstance.get("/thresholds");
+    const data = unwrap(res) as any;
+    const t = data?.data || data;
+    // Normalize keys for frontend consumers
+    return {
+      normal_low: t.Normal_Low ?? t.normal_low,
+      normal_high: t.Normal_High ?? t.normal_high,
+      borderline_low: t.Borderline_Low ?? t.borderline_low,
+      borderline_high: t.Borderline_High ?? t.borderline_high,
+      abnormal_low: t.Abnormal_Low ?? t.abnormal_low,
+      abnormal_high: t.Abnormal_High ?? t.abnormal_high,
+    };
   },
 
   async updateCategoryThreshold(payload: Record<string, any>) {
-    const res = await axiosInstance.put("/threshold", payload);
+    // Backend route: PUT /api/thresholds expects PascalCase keys
+    const body = {
+      Normal_Low: payload.Normal_Low ?? payload.normal_low,
+      Normal_High: payload.Normal_High ?? payload.normal_high,
+      Borderline_Low: payload.Borderline_Low ?? payload.borderline_low,
+      Borderline_High: payload.Borderline_High ?? payload.borderline_high,
+      Abnormal_Low: payload.Abnormal_Low ?? payload.abnormal_low,
+      Abnormal_High: payload.Abnormal_High ?? payload.abnormal_high,
+    };
+    const res = await axiosInstance.put("/thresholds", body);
     return unwrap(res);
   },
 
@@ -91,7 +111,14 @@ export default {
   // specialist
   async getAssignedPatients() {
     const res = await axiosInstance.get("/specialist/patients");
-    return unwrap(res);
+    const data = unwrap(res) as any;
+    const list = data?.data?.patients || data?.patients || [];
+    // Map backend column names to frontend shape
+    return list.map((r: any) => ({
+      patient_id: r.Patient_ID,
+      name: r.Name,
+      healthcare_number: r.Healthcare_Number,
+    }));
   },
 
   // admin: report-related
