@@ -40,15 +40,16 @@ const BloodSugarForm: React.FC<BloodSugarFormProps> = ({
     }
     setLoading(true);
     try {
-      const payload: BloodSugarReading = {
+      const payload = {
         value: parseFloat(value),
         unit,
-        datetime,
-        food_notes: food,
-        activity_notes: activity,
+        dateTime: datetime,
+        foodNotes: food,
+        activityNotes: activity,
         symptoms,
       };
       const res = await api.createReading(payload);
+      console.log("Reading saved successfully:", res);
       onSaved?.(res);
       setValue("");
       setFood("");
