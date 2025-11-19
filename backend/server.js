@@ -156,6 +156,14 @@ server.listen(PORT, () => {
   console.log(`Server running on: http://localhost:${PORT}`);
   console.log(`Database: blood_sugar_monitoring_system`);
   console.log(`CORS enabled for: http://localhost:3000`);
+
+  // Email notification status
+  if (process.env.SENDGRID_API_KEY) {
+    console.log('Email notifications: ENABLED');
+  } else {
+    console.log('Email notifications: DISABLED (missing SENDGRID_API_KEY)');
+  }
+
   console.log(`Started at: ${new Date().toLocaleString()}`);
   socketManager.init(server); // Initialize Socket.IO with the HTTP server
   console.log('✓ Socket.IO server initialized.');
