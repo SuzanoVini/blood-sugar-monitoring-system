@@ -24,11 +24,13 @@ const AuthenticationDashboard: React.FC = () => {
       const { token, user } = await authService.login(email, password);
 
       if (token) {
-        console.log("Login successful, user:", user);
+        if (import.meta.env.DEV) {
+          console.log("Login successful, user:", user);
+        }
         alert(`Welcome back, ${user.name}!`);
 
         // Normalize role to lowercase and replace spaces with underscores
-        const role = user.role?.toLowerCase().replace(" ", "_");
+        const role = user.role?.toLowerCase().replace(/\s+/g, "_");
 
         // Role-based default route
         const roleDefaultRoute: { [key: string]: string } = {
@@ -39,13 +41,17 @@ const AuthenticationDashboard: React.FC = () => {
         };
 
         const redirectRoute = roleDefaultRoute[role] || "/login";
-        console.log("Redirecting to:", redirectRoute);
+        if (import.meta.env.DEV) {
+          console.log("Redirecting to:", redirectRoute);
+        }
         navigate(redirectRoute);
       } else {
         setError("Invalid email or password.");
       }
     } catch (err: any) {
-      console.error("Login failed", err);
+      if (import.meta.env.DEV) {
+        console.error("Login failed", err);
+      }
       setError(err.response?.data?.message || "Something went wrong.");
     } finally {
       setLoading(false);

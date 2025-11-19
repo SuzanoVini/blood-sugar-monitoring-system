@@ -16,12 +16,16 @@ const Navigation: React.FC = () => {
   if (token) {
     try {
       const payload = JSON.parse(atob(token.split(".")[1]));
-      console.log("Decoded JWT payload:", payload);
+      if (import.meta.env.DEV) {
+        console.log("Decoded JWT payload:", payload);
+      }
       if (payload.role) {
-        userRole = payload.role.toLowerCase().replace(" ", "_"); // normalize role
+        userRole = payload.role.toLowerCase().replace(/\s+/g, "_"); // normalize role
       }
     } catch (err) {
-      console.error("Invalid token:", err);
+      if (import.meta.env.DEV) {
+        console.error("Invalid token:", err);
+      }
     }
   }
 
