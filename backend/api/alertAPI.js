@@ -2,6 +2,8 @@
 // Author: Krish
 // Purpose: Manage patient alerts for abnormal readings
 
+const socketManager = require('../socketManager');
+
 // Count abnormal readings in the last 7 days for a patient
 function countAbnormalThisWeek(db, patientId, callback) {
   const query = `
@@ -87,6 +89,57 @@ function getAlertsByPatient(db, patientId, callback) {
   db.query(query, [patientId], (err, results) => {
     if (err) return callback(err, null);
     callback(null, results);
+  });
+}
+
+/**
+ * [NEW] Checks if an alert should be triggered for a single patient and sends real-time notifications.
+ * This is intended to be called when a new 'Abnormal' reading is logged.
+ */
+function checkAndTriggerAlerts(db, patientId, callback) {
+  countAbnormalThisWeek(db, patientId, (err, abnormalCount) => {
+    if (err) return callback(err);
+
+    if (abnormalCount > 3) {
+      const now = new Date();
+      const dayOfWeek = now.getDay();
+      const weekStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - dayOfWeek);
+      weekStart.setHours(0, 0, 0, 0);
+
+      const checkAlertQuery = `SELECT Alert_ID FROM Alert WHERE Patient_ID = ? AND Sent_At >= ?`;
+      db.query(checkAlertQuery, [patientId, weekStart], (err, existingAlerts) => {
+        if (err) return callback(err);
+
+        if (existingAlerts.length > 0) {
+          return callback(null, { status: 'skipped', reason: 'Alert already sent this week' });
+        }
+
+        getPatientSpecialist(db, patientId, (err, specialistId) => {
+          if (err) return callback(err);
+
+          createAlert(db, patientId, abnormalCount, specialistId, (err, alert) => {
+            if (err) return callback(err);
+
+            const notificationData = {
+              type: 'alert',
+              title: 'Critical Blood Sugar Alert!',
+              message: `You have logged ${abnormalCount} abnormal readings this week. Please review your logs.`,
+              patientId: patientId,
+              timestamp: new Date().toISOString()
+            };
+
+            socketManager.sendNotificationToUser(patientId, notificationData);
+            if (specialistId) {
+              socketManager.sendNotificationToUser(specialistId, { ...notificationData, message: `Patient ${patientId} has logged ${abnormalCount} abnormal readings this week.` });
+            }
+
+            callback(null, { status: 'alert_triggered', alert: alert });
+          });
+        });
+      });
+    } else {
+      callback(null, { status: 'skipped', reason: 'Threshold not met' });
+    }
   });
 }
 
@@ -183,5 +236,6 @@ module.exports = {
   createAlert,
   getAlertsByPatient,
   checkAllPatientsForAlerts,
-  logAlertNotification
+  logAlertNotification,
+  checkAndTriggerAlerts // Added new function to exports
 };
