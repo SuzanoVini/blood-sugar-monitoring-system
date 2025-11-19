@@ -7,18 +7,16 @@ const express = require('express');
 const router = express.Router();
 const specialistAPI = require('../api/specialistAPI');
 
-// Middleware to validate specialist ID from request
-function validateSpecialistId(req, res, next) {
-  const specialistId = parseInt(req.body.specialist_id || req.query.specialist_id || req.params.specialist_id);
-
-  if (!specialistId || isNaN(specialistId)) {
-    return res.status(400).json({
+// Middleware to attach specialist ID from JWT token
+function attachSpecialistIdFromJWT(req, res, next) {
+  if (!req.user || !Number.isInteger(+req.user.user_id) || +req.user.user_id <= 0) {
+    return res.status(401).json({
       success: false,
-      message: 'Valid specialist_id is required'
+      message: 'Valid authenticated user required'
     });
   }
 
-  req.specialistId = specialistId;
+  req.specialistId = +req.user.user_id;
   next();
 }
 
@@ -51,9 +49,8 @@ function verifySpecialistMiddleware(req, res, next) {
 /**
  * GET /api/specialist/patients
  * Get all patients assigned to the specialist
- * Query params: specialist_id (required)
  */
-router.get('/patients', validateSpecialistId, verifySpecialistMiddleware, (req, res) => {
+router.get('/patients', attachSpecialistIdFromJWT, verifySpecialistMiddleware, (req, res) => {
   const db = req.app.locals.db;
   const specialistId = req.specialistId;
 
@@ -82,9 +79,8 @@ router.get('/patients', validateSpecialistId, verifySpecialistMiddleware, (req, 
  * GET /api/specialist/patients/:id
  * Get detailed information about a specific patient
  * Params: id (patient_id)
- * Query params: specialist_id (required)
  */
-router.get('/patients/:id', validateSpecialistId, verifySpecialistMiddleware, (req, res) => {
+router.get('/patients/:id', attachSpecialistIdFromJWT, verifySpecialistMiddleware, (req, res) => {
   const db = req.app.locals.db;
   const specialistId = req.specialistId;
   const patientId = parseInt(req.params.id);
@@ -133,9 +129,9 @@ router.get('/patients/:id', validateSpecialistId, verifySpecialistMiddleware, (r
  * GET /api/specialist/patients/:id/readings
  * Get reading history for a specific patient
  * Params: id (patient_id)
- * Query params: specialist_id (required), startDate, endDate, category, limit, offset
+ * Query params: startDate, endDate, category, limit, offset
  */
-router.get('/patients/:id/readings', validateSpecialistId, verifySpecialistMiddleware, (req, res) => {
+router.get('/patients/:id/readings', attachSpecialistIdFromJWT, verifySpecialistMiddleware, (req, res) => {
   const db = req.app.locals.db;
   const specialistId = req.specialistId;
   const patientId = parseInt(req.params.id);
@@ -188,9 +184,9 @@ router.get('/patients/:id/readings', validateSpecialistId, verifySpecialistMiddl
  * GET /api/specialist/patients/:id/alerts
  * Get alerts for a specific patient
  * Params: id (patient_id)
- * Query params: specialist_id (required), limit (optional)
+ * Query params: limit (optional)
  */
-router.get('/patients/:id/alerts', validateSpecialistId, verifySpecialistMiddleware, (req, res) => {
+router.get('/patients/:id/alerts', attachSpecialistIdFromJWT, verifySpecialistMiddleware, (req, res) => {
   const db = req.app.locals.db;
   const specialistId = req.specialistId;
   const patientId = parseInt(req.params.id);
@@ -235,9 +231,9 @@ router.get('/patients/:id/alerts', validateSpecialistId, verifySpecialistMiddlew
 /**
  * POST /api/specialist/feedback
  * Provide feedback to a patient
- * Body: specialist_id (required), patient_id (required), content (required)
+ * Body: patient_id (required), content (required)
  */
-router.post('/feedback', validateSpecialistId, verifySpecialistMiddleware, (req, res) => {
+router.post('/feedback', attachSpecialistIdFromJWT, verifySpecialistMiddleware, (req, res) => {
   const db = req.app.locals.db;
   const specialistId = req.specialistId;
 
@@ -290,9 +286,9 @@ router.post('/feedback', validateSpecialistId, verifySpecialistMiddleware, (req,
  * GET /api/specialist/feedback/:patient_id
  * Get feedback history for a specific patient
  * Params: patient_id
- * Query params: specialist_id (required), limit (optional)
+ * Query params: limit (optional)
  */
-router.get('/feedback/:patient_id', validateSpecialistId, verifySpecialistMiddleware, (req, res) => {
+router.get('/feedback/:patient_id', attachSpecialistIdFromJWT, verifySpecialistMiddleware, (req, res) => {
   const db = req.app.locals.db;
   const specialistId = req.specialistId;
   const patientId = parseInt(req.params.patient_id);
@@ -337,9 +333,9 @@ router.get('/feedback/:patient_id', validateSpecialistId, verifySpecialistMiddle
 /**
  * GET /api/specialist/feedback
  * Get all feedback created by the specialist
- * Query params: specialist_id (required), limit (optional)
+ * Query params: limit (optional)
  */
-router.get('/feedback', validateSpecialistId, verifySpecialistMiddleware, (req, res) => {
+router.get('/feedback', attachSpecialistIdFromJWT, verifySpecialistMiddleware, (req, res) => {
   const db = req.app.locals.db;
   const specialistId = req.specialistId;
   const limit = parseInt(req.query.limit) || 20;
@@ -368,9 +364,8 @@ router.get('/feedback', validateSpecialistId, verifySpecialistMiddleware, (req, 
 /**
  * GET /api/specialist/dashboard
  * Get dashboard statistics for specialist
- * Query params: specialist_id (required)
  */
-router.get('/dashboard', validateSpecialistId, verifySpecialistMiddleware, (req, res) => {
+router.get('/dashboard', attachSpecialistIdFromJWT, verifySpecialistMiddleware, (req, res) => {
   const db = req.app.locals.db;
   const specialistId = req.specialistId;
 
