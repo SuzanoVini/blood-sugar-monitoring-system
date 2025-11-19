@@ -30,6 +30,21 @@ const authService = {
     localStorage.removeItem(TOKEN_KEY);
   },
 
+  getCurrentUser: async (): Promise<any | null> => {
+    const token = localStorage.getItem(TOKEN_KEY);
+    if (!token) {
+      return null;
+    }
+    try {
+      const response = await axios.get("/api/auth/me", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      return response.data?.data || null;
+    } catch (error) {
+      return null;
+    }
+  },
+
   getToken: () => localStorage.getItem(TOKEN_KEY),
 
   isAuthenticated: () => !!localStorage.getItem(TOKEN_KEY),
