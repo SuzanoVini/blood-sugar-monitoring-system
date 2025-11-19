@@ -22,9 +22,11 @@ const ReadingsList: React.FC<ReadingsListProps> = ({ refreshSignal }) => {
   const [loading, setLoading] = useState(true);
 
   const load = async () => {
+    console.log("ReadingsList: Loading readings...");
     setLoading(true);
     try {
       const res: Reading[] = await api.getReadings();
+      console.log("ReadingsList: Loaded", res.length, "readings");
       setReadings(res);
     } catch (err) {
       console.error("Failed to load readings", err);
@@ -34,6 +36,7 @@ const ReadingsList: React.FC<ReadingsListProps> = ({ refreshSignal }) => {
   };
 
   useEffect(() => {
+    console.log("ReadingsList: refreshSignal changed to", refreshSignal);
     load();
   }, [refreshSignal]);
 

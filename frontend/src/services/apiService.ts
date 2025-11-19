@@ -35,7 +35,20 @@ export default {
   async getReadings() {
     try {
       const res = await axiosInstance.get("/patient/readings");
-      return unwrap(res);
+      const data = unwrap(res);
+      const readings = data.data?.readings || [];
+      // Map backend PascalCase to frontend snake_case
+      return readings.map((r: any) => ({
+        reading_id: r.Reading_ID,
+        datetime: r.DateTime,
+        value: r.Value,
+        unit: r.Unit,
+        category: r.Category,
+        food_notes: r.Food_Notes,
+        activity_notes: r.Activity_Notes,
+        notes: r.Notes,
+        symptoms: r.Symptoms
+      }));
     } catch (err) {
       // fallback: return empty array for dev without backend
       if (err instanceof Error) {
@@ -71,7 +84,8 @@ export default {
   // alerts
   async getAlerts() {
     const res = await axiosInstance.get("/patient/alerts");
-    return unwrap(res);
+    const data = unwrap(res);
+    return data.data?.alerts || [];
   },
 
   // specialist

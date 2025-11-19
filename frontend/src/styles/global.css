@@ -106,14 +106,54 @@ label{font-size:12px; color:var(--muted); margin-bottom:6px; display:block}
 .m0{margin:0} .mt8{margin-top:8px} .mt16{margin-top:16px}
 
 /* Page container + dashboard grid */
-.container{max-width:1160px;margin:0 auto;padding:24px}
+.container{max-width:1400px;margin:0 auto;padding:24px}
 .dashboard-grid{
   display:grid;
-  grid-template-columns:minmax(340px,420px) 1fr;
-  gap:24px;
+  grid-template-columns:480px 1fr;
+  gap:32px;
   align-items:start;
 }
 .stack{display:grid;gap:16px}
+
+/* Responsive layout */
+@media (max-width: 1200px) {
+  .container{max-width:100%;padding:20px}
+  .dashboard-grid{
+    grid-template-columns:400px 1fr;
+    gap:24px;
+  }
+}
+
+@media (max-width: 1024px) {
+  .container{padding:16px}
+  .dashboard-grid{
+    grid-template-columns:1fr;
+    gap:20px;
+  }
+}
+
+@media (max-width: 768px) {
+  .container{padding:12px}
+  .dashboard-grid{gap:16px}
+  .stack{gap:12px}
+  .page-title{font-size:24px}
+  .card .card-hd{padding:12px 14px}
+  .card .card-bd{padding:14px}
+  .form{grid-template-columns:1fr}
+  .table{font-size:14px}
+  .table th{font-size:11px}
+  .table td{padding:10px}
+}
+
+@media (max-width: 480px) {
+  .container{padding:8px}
+  h2{font-size:20px}
+  .btn{padding:8px 12px;font-size:14px}
+  .card .card-hd{padding:10px 12px}
+  .card .card-bd{padding:12px}
+  .table{font-size:13px}
+  .table td{padding:8px;font-size:12px}
+}
 
 /* Ensure cards align and have a consistent header/body */
 .card{width:100%}
@@ -190,3 +230,27 @@ label{font-size:12px; color:var(--muted); margin-bottom:6px; display:block}
 
 /* Error */
 .form-error{margin-top:8px; color:var(--danger); font-weight:600}
+
+/* AI Suggestions bar */
+.ai-bar{
+  height:8px;
+  background:rgba(255,255,255,.06);
+  border-radius:4px;
+  overflow:hidden;
+  margin-top:6px;
+}
+.ai-bar-fill{
+  height:100%;
+  border-radius:4px;
+  transition:width .3s ease;
+}
+
+/* AI header alignment */
+.ai-header-left{
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+.ai-header-left svg{
+  color:var(--primary);
+}

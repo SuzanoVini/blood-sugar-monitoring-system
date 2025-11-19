@@ -8,18 +8,16 @@ const router = express.Router();
 const patientAPI = require('../api/patientAPI');
 const alertAPI = require('../api/alertAPI');
 
-// Middleware to validate patient ID from request
-function validatePatientId(req, res, next) {
-  const patientId = parseInt(req.body.patient_id || req.query.patient_id || req.params.patient_id);
-
-  if (!patientId || isNaN(patientId)) {
-    return res.status(400).json({
+// Middleware to attach patient ID from JWT token
+function attachPatientIdFromJWT(req, res, next) {
+  if (!req.user || !Number.isInteger(+req.user.user_id) || +req.user.user_id <= 0) {
+    return res.status(401).json({
       success: false,
-      message: 'Valid patient_id is required'
+      message: 'Valid authenticated user required'
     });
   }
 
-  req.patientId = patientId;
+  req.patientId = +req.user.user_id;
   next();
 }
 
@@ -66,7 +64,7 @@ function enforcePatientOwnership(req, res, next) {
  * Get patient blood sugar readings with optional filtering and pagination
  * Query params: patient_id (required), startDate, endDate, category, limit, offset
  */
-router.get('/readings', validatePatientId, verifyPatientMiddleware, enforcePatientOwnership, (req, res) => {
+router.get('/readings', attachPatientIdFromJWT, verifyPatientMiddleware, enforcePatientOwnership, (req, res) => {
   const db = req.app.locals.db;
   const patientId = req.patientId;
 
@@ -122,7 +120,7 @@ router.get('/readings', validatePatientId, verifyPatientMiddleware, enforcePatie
  * Add new blood sugar reading
  * Body: patient_id, dateTime, value, unit (optional), foodNotes, activityNotes, event, symptoms, notes
  */
-router.post('/readings', validatePatientId, verifyPatientMiddleware, enforcePatientOwnership, (req, res) => {
+router.post('/readings', attachPatientIdFromJWT, verifyPatientMiddleware, enforcePatientOwnership, (req, res) => {
   const db = req.app.locals.db;
   const patientId = req.patientId;
 
@@ -178,7 +176,7 @@ router.post('/readings', validatePatientId, verifyPatientMiddleware, enforcePati
  * Params: id (reading_id)
  * Body: patient_id (required), and any fields to update
  */
-router.put('/readings/:id', validatePatientId, verifyPatientMiddleware, enforcePatientOwnership, (req, res) => {
+router.put('/readings/:id', attachPatientIdFromJWT, verifyPatientMiddleware, enforcePatientOwnership, (req, res) => {
   const db = req.app.locals.db;
   const readingId = parseInt(req.params.id);
   const patientId = req.patientId;
@@ -250,7 +248,7 @@ router.put('/readings/:id', validatePatientId, verifyPatientMiddleware, enforceP
  * Params: id (reading_id)
  * Query/Body: patient_id (required)
  */
-router.delete('/readings/:id', validatePatientId, verifyPatientMiddleware, enforcePatientOwnership, (req, res) => {
+router.delete('/readings/:id', attachPatientIdFromJWT, verifyPatientMiddleware, enforcePatientOwnership, (req, res) => {
   const db = req.app.locals.db;
   const readingId = parseInt(req.params.id);
   const patientId = req.patientId;
@@ -293,7 +291,7 @@ router.delete('/readings/:id', validatePatientId, verifyPatientMiddleware, enfor
  * Get AI-generated suggestions for patient
  * Query params: patient_id (required), limit (optional)
  */
-router.get('/suggestions', validatePatientId, verifyPatientMiddleware, enforcePatientOwnership, (req, res) => {
+router.get('/suggestions', attachPatientIdFromJWT, verifyPatientMiddleware, enforcePatientOwnership, (req, res) => {
   const db = req.app.locals.db;
   const patientId = req.patientId;
   const limit = parseInt(req.query.limit) || 10;
@@ -320,11 +318,41 @@ router.get('/suggestions', validatePatientId, verifyPatientMiddleware, enforcePa
 });
 
 /**
+ * POST /api/patient/suggestions/generate
+ * Generate new AI suggestions based on patient reading patterns
+ * Body: patient_id (required)
+ */
+router.post('/suggestions/generate', attachPatientIdFromJWT, verifyPatientMiddleware, enforcePatientOwnership, (req, res) => {
+  const db = req.app.locals.db;
+  const patientId = req.patientId;
+
+  patientAPI.generateAISuggestions(db, patientId, (err, suggestions) => {
+    if (err) {
+      console.error('Error generating suggestions:', err);
+      return res.status(500).json({
+        success: false,
+        message: 'Error generating suggestions',
+        error: err.message
+      });
+    }
+
+    res.json({
+      success: true,
+      message: `Generated ${suggestions.length} new AI suggestions`,
+      data: {
+        suggestions: suggestions,
+        count: suggestions.length
+      }
+    });
+  });
+});
+
+/**
  * GET /api/patient/alerts
  * Get alerts for patient
  * Query params: patient_id (required)
  */
-router.get('/alerts', validatePatientId, verifyPatientMiddleware, enforcePatientOwnership, (req, res) => {
+router.get('/alerts', attachPatientIdFromJWT, verifyPatientMiddleware, enforcePatientOwnership, (req, res) => {
   const db = req.app.locals.db;
   const patientId = req.patientId;
 
@@ -354,7 +382,7 @@ router.get('/alerts', validatePatientId, verifyPatientMiddleware, enforcePatient
  * Get reading statistics for patient
  * Query params: patient_id (required), startDate, endDate
  */
-router.get('/statistics', validatePatientId, verifyPatientMiddleware, enforcePatientOwnership, (req, res) => {
+router.get('/statistics', attachPatientIdFromJWT, verifyPatientMiddleware, enforcePatientOwnership, (req, res) => {
   const db = req.app.locals.db;
   const patientId = req.patientId;
 
