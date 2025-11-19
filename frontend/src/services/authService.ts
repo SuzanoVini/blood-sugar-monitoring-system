@@ -30,17 +30,15 @@ const authService = {
     localStorage.removeItem(TOKEN_KEY);
   },
 
-  getCurrentUser: async (): Promise<any | null> => {
+  getCurrentUser: (): any | null => {
     const token = localStorage.getItem(TOKEN_KEY);
-    if (!token) {
-      return null;
-    }
+    if (!token) return null;
     try {
-      const response = await axios.get("/api/auth/me", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      return response.data?.data || null;
+      const payload = token.split(".")[1];
+      const decoded = JSON.parse(atob(payload));
+      return decoded;
     } catch (error) {
+      console.error("Failed to decode current user from token:", error);
       return null;
     }
   },
