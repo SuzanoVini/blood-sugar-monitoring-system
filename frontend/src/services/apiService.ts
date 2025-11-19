@@ -135,5 +135,26 @@ export default {
   async saveReport(report: Record<string, any>) {
     const res = await axiosInstance.post("/admin/reports", report);
     return unwrap(res);
+  },
+
+  // staff: patient list (read-only)
+  async getStaffPatients(limit = 20, offset = 0) {
+    const userId = authService.getUserIdFromToken();
+    if (!userId) {
+      throw new Error("User ID not found in token");
+    }
+    const res = await axiosInstance.get("/staff/patients", {
+      params: { staff_id: userId, limit, offset }
+    });
+    const data = unwrap(res) as any;
+    const list = data?.data?.patients || data?.patients || [];
+    // Map backend column names to frontend shape
+    return list.map((r: any) => ({
+      patient_id: r.Patient_ID,
+      name: r.Name,
+      email: r.Email,
+      healthcare_number: r.Healthcare_Number,
+      status: r.Status,
+    }));
   }
 };
