@@ -7,6 +7,8 @@ const bodyParser = require('body-parser');
 const bcrypt = require('bcrypt');
 require('dotenv').config();
 const { verifyToken, requireRole } = require('./middleware/auth');
+const http = require('http'); // Required for Socket.IO
+const socketManager = require('./socketManager'); // Import Socket.IO Manager
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -98,6 +100,31 @@ const staffRoutes = require('./routes/staffRoutes');
 app.use('/api/staff', verifyToken, requireRole('Clinic_Staff', 'Administrator'), staffRoutes);
 console.log('✓ Staff routes mounted at /api/staff');
 
+// --- NEW ROUTES INTEGRATION ---
+
+const feedbackRoutes = require('./routes/feedbackRoutes');
+app.use('/api/feedback', verifyToken, requireRole('Specialist', 'Administrator', 'Patient'), feedbackRoutes);
+console.log('✓ Feedback routes mounted at /api/feedback');
+
+const roleManagementRoutes = require('./routes/roleManagementRoutes');
+app.use('/api/roles', verifyToken, requireRole('Administrator'), roleManagementRoutes);
+console.log('✓ Role Management routes mounted at /api/roles');
+
+const reportingRoutes = require('./routes/reportingRoutes');
+app.use('/api/reports', verifyToken, requireRole('Administrator'), reportingRoutes);
+console.log('✓ Reporting routes mounted at /api/reports');
+
+const thresholdRoutes = require('./routes/thresholdRoutes');
+app.use('/api/thresholds', verifyToken, requireRole('Clinic_Staff', 'Administrator'), thresholdRoutes);
+console.log('✓ Threshold routes mounted at /api/thresholds');
+
+const userProfileRoutes = require('./routes/userProfileRoutes');
+app.use('/api/user', verifyToken, userProfileRoutes); // Any authenticated user can manage their profile
+console.log('✓ User Profile routes mounted at /api/user');
+
+// --- END NEW ROUTES INTEGRATION ---
+
+
 // Error Handling Middleware
 
 // Handle 404 errors for undefined routes
@@ -121,7 +148,8 @@ app.use((err, req, res, next) => {
 });
 
 // Server Startup
-app.listen(PORT, () => {
+const server = http.createServer(app); // Create HTTP server for Socket.IO
+server.listen(PORT, () => {
   console.log('\n' + '='.repeat(50));
   console.log('Blood Sugar Monitoring System - Backend Server');
   console.log('='.repeat(50));
@@ -129,6 +157,8 @@ app.listen(PORT, () => {
   console.log(`Database: blood_sugar_monitoring_system`);
   console.log(`CORS enabled for: http://localhost:3000`);
   console.log(`Started at: ${new Date().toLocaleString()}`);
+  socketManager.init(server); // Initialize Socket.IO with the HTTP server
+  console.log('✓ Socket.IO server initialized.');
   console.log('='.repeat(50) + '\n');
 });
 
