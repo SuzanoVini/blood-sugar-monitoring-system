@@ -29,6 +29,8 @@ DB_NAME=blood_sugar_monitoring_system
 DB_PORT=3306
 PORT=5000
 NODE_ENV=development
+JWT_SECRET=<generate_secure_random_64_character_hex_string>
+JWT_EXPIRES_IN=1h
 ```
 
 Adjust these values to match your local MySQL configuration.
