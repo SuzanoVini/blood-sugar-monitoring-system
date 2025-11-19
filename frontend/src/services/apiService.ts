@@ -31,6 +31,22 @@ const unwrap = <T = any>(res: UnwrapResponse<T>): T => {
 };
 
 export default {
+  // generic helpers (for legacy callers)
+  async get(path: string, config?: any) {
+    const res = await axiosInstance.get(path, config);
+    return unwrap(res);
+  },
+
+  async post(path: string, body?: any, config?: any) {
+    const res = await axiosInstance.post(path, body, config);
+    return unwrap(res);
+  },
+
+  async put(path: string, body?: any, config?: any) {
+    const res = await axiosInstance.put(path, body, config);
+    return unwrap(res);
+  },
+
   // readings
   async getReadings() {
     try {
@@ -104,8 +120,15 @@ export default {
   // alerts
   async getAlerts() {
     const res = await axiosInstance.get("/patient/alerts");
-    const data = unwrap(res);
-    return data.data?.alerts || [];
+    const data = unwrap(res) as any;
+    const list = data?.data?.alerts || data?.alerts || [];
+    // Normalize alert fields for frontend consumers
+    return list.map((a: any) => ({
+      alert_id: a.Alert_ID ?? a.alert_id,
+      sent_at: a.Sent_At ?? a.sent_at,
+      summary: a.Summary ?? a.summary,
+      abnormal_count: a.Abnormal_Count ?? a.abnormal_count,
+    }));
   },
 
   // specialist
