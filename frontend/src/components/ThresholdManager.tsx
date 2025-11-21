@@ -29,7 +29,7 @@ const ThresholdManager: React.FC = () => {
       setError(null);
       try {
         // This API endpoint will need to be created in the backend (e.g., GET /api/staff/thresholds)
-        const response = await apiService.get('/staff/thresholds');
+        const response = await apiService.get('/thresholds'); // Corrected endpoint
         if (response.data && response.success) {
           setThresholds(response.data);
         } else {
@@ -58,7 +58,7 @@ const ThresholdManager: React.FC = () => {
     setSuccess(null);
     try {
       // This API endpoint will need to be created in the backend (e.g., PUT /api/staff/thresholds)
-      const response = await apiService.put('/staff/thresholds', thresholds);
+      const response = await apiService.put('/thresholds', thresholds); // Corrected endpoint
       if (response.success) {
         setSuccess('Thresholds updated successfully!');
       } else {

@@ -6,29 +6,44 @@
 const express = require('express');
 const router = express.Router();
 const adminAPI = require('../api/adminAPI');
+const { verifyToken, requireRole } = require('../middleware/auth'); // Import auth middleware
 
-// Middleware to validate admin_id from request
-function validateAdminId(req, res, next) {
-  const adminId = parseInt(req.body.admin_id || req.query.admin_id);
+// Middleware to validate admin_id from request - REMOVED
 
-  if (!adminId || isNaN(adminId)) {
-    return res.status(400).json({
-      success: false,
-      message: 'Valid admin_id is required'
+/**
+ * GET /api/admin/users
+ * Get all users for admin view
+ * Accessible only by Administrators.
+ */
+router.get('/users', verifyToken, requireRole('Administrator'), (req, res) => {
+  const db = req.app.locals.db;
+
+  adminAPI.getAllUsers(db, (err, users) => {
+    if (err) {
+      console.error('Error getting all users:', err);
+      return res.status(500).json({
+        success: false,
+        message: 'Error retrieving all users',
+        error: err.message
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'All users retrieved successfully',
+      data: users
     });
-  }
-
-  req.adminId = adminId;
-  next();
-}
+  });
+});
 
 /**
  * POST /api/admin/users/specialist
  * Create new specialist account
- * Body: admin_id (required), name, email, password, workingId, specialization, phone (optional)
+ * Body: name, email, password, workingId, specialization, phone (optional)
+ * Accessible only by Administrators.
  * Response: { success, message, data }
  */
-router.post('/users/specialist', validateAdminId, (req, res) => {
+router.post('/users/specialist', verifyToken, requireRole('Administrator'), (req, res) => {
   const db = req.app.locals.db;
 
   // Validate required fields
@@ -95,10 +110,11 @@ router.post('/users/specialist', validateAdminId, (req, res) => {
 /**
  * POST /api/admin/users/staff
  * Create new clinic staff account
- * Body: admin_id (required), name, email, password, workingId, department, phone (optional)
+ * Body: name, email, password, workingId, department, phone (optional)
+ * Accessible only by Administrators.
  * Response: { success, message, data }
  */
-router.post('/users/staff', validateAdminId, (req, res) => {
+router.post('/users/staff', verifyToken, requireRole('Administrator'), (req, res) => {
   const db = req.app.locals.db;
 
   // Validate required fields
@@ -166,10 +182,10 @@ router.post('/users/staff', validateAdminId, (req, res) => {
  * DELETE /api/admin/users/:id
  * Delete user account
  * Params: id (user_id)
- * Query: admin_id (required)
+ * Accessible only by Administrators.
  * Response: { success, message, data }
  */
-router.delete('/users/:id', validateAdminId, (req, res) => {
+router.delete('/users/:id', verifyToken, requireRole('Administrator'), (req, res) => {
   const db = req.app.locals.db;
   const userId = parseInt(req.params.id);
 
@@ -208,11 +224,13 @@ router.delete('/users/:id', validateAdminId, (req, res) => {
 /**
  * POST /api/admin/reports/generate
  * Generate system report
- * Body: admin_id (required), period_type (Monthly/Yearly), period_start, period_end
+ * Body: period_type (Monthly/Yearly), period_start, period_end
+ * Accessible only by Administrators.
  * Response: { success, message, data }
  */
-router.post('/reports/generate', validateAdminId, (req, res) => {
+router.post('/reports/generate', verifyToken, requireRole('Administrator'), (req, res) => {
   const db = req.app.locals.db;
+  const adminId = req.user.user_id; // Get admin ID from authenticated user
 
   // Validate required fields
   const { period_type, period_start, period_end } = req.body;
@@ -241,98 +259,141 @@ router.post('/reports/generate', validateAdminId, (req, res) => {
     });
   }
 
-  // Get active patients in period
-  adminAPI.getActivePatientsInPeriod(db, period_start, period_end, (err, patients) => {
-    if (err) {
-      console.error('Error getting active patients:', err);
-      return res.status(500).json({
-        success: false,
-        message: 'Error retrieving patient data for report'
-      });
-    }
-
-    // Get reading statistics for the period
-    const readingsQuery = `
-      SELECT
-        COUNT(*) AS total_readings,
-        COUNT(DISTINCT Patient_ID) AS active_patients,
-        AVG(Value) AS avg_reading,
-        MIN(Value) AS min_reading,
-        MAX(Value) AS max_reading,
-        SUM(CASE WHEN Category = 'Normal' THEN 1 ELSE 0 END) AS normal_count,
-        SUM(CASE WHEN Category = 'Borderline' THEN 1 ELSE 0 END) AS borderline_count,
-        SUM(CASE WHEN Category = 'Abnormal' THEN 1 ELSE 0 END) AS abnormal_count
-      FROM Sugar_Reading
-      WHERE DateTime BETWEEN ? AND ?;
-    `;
-
-    db.query(readingsQuery, [period_start, period_end], (err, statsResults) => {
+      // --- Step 1: Get all active patients metadata ---
+    adminAPI.getAllActivePatientsMeta(db, (err, activePatientsMeta) => {
       if (err) {
-        console.error('Error getting reading statistics:', err);
+        console.error('Error getting all active patients metadata:', err);
         return res.status(500).json({
           success: false,
-          message: 'Error calculating report statistics'
+          message: 'Error retrieving active patient metadata for report'
         });
       }
-
-      const stats = statsResults[0];
-
-      // Build summary data
-      const summaryData = {
-        period: {
-          type: period_type,
-          start: period_start,
-          end: period_end
-        },
-        patients: {
-          total_active: stats.active_patients,
-          list: patients.map(p => ({ id: p.Patient_ID, name: p.Name }))
-        },
-        readings: {
-          total: stats.total_readings,
-          average: parseFloat(stats.avg_reading).toFixed(2),
-          min: stats.min_reading,
-          max: stats.max_reading,
-          by_category: {
-            normal: stats.normal_count,
-            borderline: stats.borderline_count,
-            abnormal: stats.abnormal_count
-          }
-        },
-        generated_at: new Date().toISOString()
-      };
-
-      // Save report
-      adminAPI.saveReport(db, req.adminId, period_type, period_start, period_end, summaryData, (err, result) => {
-        if (err) {
-          console.error('Error saving report:', err);
-          return res.status(500).json({
-            success: false,
-            message: 'Error saving generated report'
+  
+      // --- Step 2: Get reading trends for each patient concurrently ---
+      const patientTrendsPromises = activePatientsMeta.map(patient => {
+        return new Promise((resolve, reject) => {
+          adminAPI.getPatientReadingTrendsForPeriod(db, patient.Patient_ID, period_start, period_end, (trendErr, trends) => {
+            if (trendErr) {
+              console.error(`Error getting trends for patient ${patient.Patient_ID}:`, trendErr);
+              // Resolve with basic patient info and null trends if error, to keep patient in list
+              return resolve({
+                id: patient.Patient_ID,
+                name: patient.Patient_Name,
+                email: patient.Patient_Email,
+                average_reading: null,
+                highest_reading: null,
+                lowest_reading: null,
+                total_readings: 0
+              });
+            }
+            resolve({
+              id: patient.Patient_ID,
+              name: patient.Patient_Name,
+              email: patient.Patient_Email,
+              average_reading: trends.Average_Reading,
+              highest_reading: trends.Highest_Reading,
+              lowest_reading: trends.Lowest_Reading,
+              total_readings: trends.Total_Readings
+            });
           });
-        }
-
-        res.status(201).json({
-          success: true,
-          message: 'Report generated successfully',
-          data: {
-            report_id: result.report_id,
-            summary: summaryData
-          }
         });
       });
-    });
-  });
-});
+  
+      Promise.all(patientTrendsPromises)
+        .then(patientTrendsList => {
+          // --- Step 3: Get overall active patients count ---
+          adminAPI.getTotalActivePatientsCount(db, (err, totalActivePatientsCount) => {
+            if (err) {
+              console.error('Error getting total active patients count:', err);
+              return res.status(500).json({ success: false, message: 'Error retrieving total active patients count' });
+            }
+  
+            // --- Step 4: Get overall reading statistics for the period ---
+            const readingsQuery = `
+              SELECT
+                COUNT(*) AS total_readings,
+                AVG(Value) AS avg_reading,
+                MIN(Value) AS min_reading,
+                MAX(Value) AS max_reading,
+                SUM(CASE WHEN Category = 'Normal' THEN 1 ELSE 0 END) AS normal_count,
+                SUM(CASE WHEN Category = 'Borderline' THEN 1 ELSE 0 END) AS borderline_count,
+                SUM(CASE WHEN Category = 'Abnormal' THEN 1 ELSE 0 END) AS abnormal_count
+              FROM Sugar_Reading
+              WHERE DateTime BETWEEN ? AND ?;
+            `;
+  
+            db.query(readingsQuery, [period_start, period_end], (err, statsResults) => {
+              if (err) {
+                console.error('Error getting reading statistics:', err);
+                return res.status(500).json({
+                  success: false,
+                  message: 'Error calculating report statistics'
+                });
+              }
+  
+              const stats = statsResults[0];
+  
+              // Build summary data
+              const summaryData = {
+                period: {
+                  type: period_type,
+                  start: period_start,
+                  end: period_end
+                },
+                patients: {
+                  total_active: totalActivePatientsCount, // Overall active patients count
+                  list: patientTrendsList // Detailed list with trends for each patient
+                },
+                readings: {
+                  total: stats.total_readings,
+                  average: parseFloat(stats.avg_reading || 0).toFixed(2),
+                  min: stats.min_reading || 0,
+                  max: stats.max_reading || 0,
+                  by_category: {
+                    normal: stats.normal_count,
+                    borderline: stats.borderline_count,
+                    abnormal: stats.abnormal_count
+                  }
+                },
+                generated_at: new Date().toISOString()
+              };
+  
+              // Save report
+              adminAPI.saveReport(db, adminId, period_type, period_start, period_end, summaryData, (err, result) => {
+                if (err) {
+                  console.error('Error saving report:', err);
+                  return res.status(500).json({
+                    success: false,
+                    message: 'Error saving generated report'
+                  });
+                }
+  
+                res.status(201).json({
+                  success: true,
+                  message: 'Report generated successfully',
+                  data: {
+                    report_id: result.report_id,
+                    summary: summaryData
+                  }
+                });
+              });
+            });
+          });
+        })
+        .catch(error => {
+          console.error('Unhandled error in patient trends promises:', error);
+          return res.status(500).json({ success: false, message: 'Internal server error during report generation' });
+        });
+    });});
 
 /**
  * GET /api/admin/reports/:id
  * Retrieve specific report
  * Params: id (report_id)
- * Query: admin_id (required)
+ * Accessible only by Administrators.
  * Response: { success, message, data }
  */
-router.get('/reports/:id', validateAdminId, (req, res) => {
+router.get('/reports/:id', verifyToken, requireRole('Administrator'), (req, res) => {
   const db = req.app.locals.db;
   const reportId = parseInt(req.params.id);
 
@@ -371,10 +432,10 @@ router.get('/reports/:id', validateAdminId, (req, res) => {
 /**
  * GET /api/admin/stats
  * Get system-wide statistics
- * Query: admin_id (required)
+ * Accessible only by Administrators.
  * Response: { success, message, data }
  */
-router.get('/stats', validateAdminId, (req, res) => {
+router.get('/stats', verifyToken, requireRole('Administrator'), (req, res) => {
   const db = req.app.locals.db;
 
   adminAPI.getSystemStats(db, (err, stats) => {
@@ -393,5 +454,6 @@ router.get('/stats', validateAdminId, (req, res) => {
     });
   });
 });
+
 
 module.exports = router;

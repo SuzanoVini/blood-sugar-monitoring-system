@@ -4,6 +4,7 @@ import api from "../services/apiService";
 import authService from "../services/authService";
 import ThresholdManager from '../components/ThresholdManager';
 import UserManagement from '../components/UserManagement';
+import CreateUserForm from '../components/CreateUserForm';
 
 interface AdminDashboardProps {}
 
@@ -24,8 +25,8 @@ interface BackendReport {
  */
 const AdminDashboard: React.FC<AdminDashboardProps> = () => {
   const [periodType, setPeriodType] = useState<"Monthly" | "Yearly">("Monthly");
-  const [startDate, setStartDate] = useState<string>("");
-  const [endDate, setEndDate] = useState<string>("");
+  const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth());
+  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
   const [loadingReports, setLoadingReports] = useState<boolean>(true);
   const [generatingReport, setGeneratingReport] = useState<boolean>(false);
   const [historicalReports, setHistoricalReports] = useState<BackendReport[]>([]);
@@ -65,10 +66,25 @@ const AdminDashboard: React.FC<AdminDashboardProps> = () => {
   }, []); // Empty dependency array means this runs once on mount
 
   const handleGenerate = async () => {
+    let startDate = '';
+    let endDate = '';
+
+    if (periodType === 'Monthly') {
+        const firstDay = new Date(selectedYear, selectedMonth, 1);
+        const lastDay = new Date(selectedYear, selectedMonth + 1, 0);
+        startDate = firstDay.toISOString().split('T')[0];
+        endDate = lastDay.toISOString().split('T')[0];
+    } else { // Yearly
+        const firstDay = new Date(selectedYear, 0, 1);
+        const lastDay = new Date(selectedYear, 11, 31);
+        startDate = firstDay.toISOString().split('T')[0];
+        endDate = lastDay.toISOString().split('T')[0];
+    }
+
     setGeneratingReport(true);
     try {
       // Calls the backend endpoint POST /api/reports/generate
-      const response = await api.post('/reports/generate', { periodType, startDate, endDate });
+      const response = await api.post('/reports/generate', { periodType, periodStart: startDate, periodEnd: endDate });
       if (response.success) {
         alert("Report generated and saved successfully!");
         fetchHistoricalReports(); // Refresh the list of reports
@@ -122,6 +138,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = () => {
       {/* Render the UserManagement component */}
       <UserManagement />
 
+      {/* Render the CreateUserForm component */}
+      <CreateUserForm />
+
       <div className="card">
         <h4>Generate New Report</h4> {/* Updated title */}
         <div>
@@ -136,22 +155,38 @@ const AdminDashboard: React.FC<AdminDashboardProps> = () => {
             <option>Yearly</option>
           </select>
         </div>
-        <div>
-          <label>Start</label>
-          <input
-            type="date"
-            value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
-          />
-        </div>
-        <div>
-          <label>End</label>
-          <input
-            type="date"
-            value={endDate}
-            onChange={(e) => setEndDate(e.target.value)}
-          />
-        </div>
+        {periodType === 'Monthly' && (
+          <div>
+            <label>Month</label>
+            <select value={selectedMonth} onChange={(e) => setSelectedMonth(parseInt(e.target.value))}>
+              {Array.from({ length: 12 }, (_, i) => (
+                <option key={i} value={i}>
+                  {new Date(0, i).toLocaleString('default', { month: 'long' })}
+                </option>
+              ))}
+            </select>
+            <label>Year</label>
+            <select value={selectedYear} onChange={(e) => setSelectedYear(parseInt(e.target.value))}>
+              {Array.from({ length: 10 }, (_, i) => (
+                <option key={i} value={new Date().getFullYear() - i}>
+                  {new Date().getFullYear() - i}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+        {periodType === 'Yearly' && (
+          <div>
+            <label>Year</label>
+            <select value={selectedYear} onChange={(e) => setSelectedYear(parseInt(e.target.value))}>
+              {Array.from({ length: 10 }, (_, i) => (
+                <option key={i} value={new Date().getFullYear() - i}>
+                  {new Date().getFullYear() - i}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
         <div style={{ marginTop: 8 }}>
           <button className="btn btn-primary" onClick={handleGenerate} disabled={generatingReport}>
             {generatingReport ? "Generating..." : "Generate Report"}
@@ -183,11 +218,61 @@ const AdminDashboard: React.FC<AdminDashboardProps> = () => {
               ))}
             </ul>
             {selectedReportSummary && (
-                <div style={{ marginTop: '1rem', padding: '1rem', border: '1px solid #ccc', borderRadius: '4px' }}>
+                <div style={{ marginTop: '1rem', padding: '1rem', border: '1px solid var(--line)', borderRadius: 'var(--radius)', backgroundColor: 'var(--surface)' }}>
                     <h5>Selected Report Summary:</h5>
-                    <pre style={{ whiteSpace: "pre-wrap" }}>
-                        {JSON.stringify(selectedReportSummary, null, 2)}
-                    </pre>
+                    <p><strong>Period Type:</strong> {selectedReportSummary.period.type}</p>
+                    <p><strong>Period:</strong> {selectedReportSummary.period.start} to {selectedReportSummary.period.end}</p>
+                    <p><strong>Generated At:</strong> {new Date(selectedReportSummary.generated_at).toLocaleString()}</p>
+
+                    <h6 style={{ marginTop: '1rem' }}>Overall Reading Statistics:</h6>
+                    <p><strong>Total Readings:</strong> {selectedReportSummary.readings.total}</p>
+                    <p><strong>Average Reading:</strong> {selectedReportSummary.readings.average} mg/dl</p>
+                    <p><strong>Min Reading:</strong> {selectedReportSummary.readings.min} mg/dl</p>
+                    <p><strong>Max Reading:</strong> {selectedReportSummary.readings.max} mg/dl</p>
+                    <p><strong>Categorization:</strong> Normal ({selectedReportSummary.readings.by_category.normal}), Borderline ({selectedReportSummary.readings.by_category.borderline}), Abnormal ({selectedReportSummary.readings.by_category.abnormal})</p>
+
+                    <h6 style={{ marginTop: '1rem' }}>Patient Statistics:</h6>
+                    <p><strong>Total Active Patients in Period:</strong> {selectedReportSummary.patients.total_active}</p>
+                    {selectedReportSummary.patients.list && selectedReportSummary.patients.list.length > 0 && (
+                        <div style={{ marginTop: '1rem', overflowX: 'auto' }}>
+                            <table className="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Patient Name</th>
+                                        <th>Email</th>
+                                        <th>Avg. Reading</th>
+                                        <th>Highest</th>
+                                        <th>Lowest</th>
+                                        <th>Total Readings</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {selectedReportSummary.patients.list.map((patientTrend: any) => (
+                                        <tr key={patientTrend.id}>
+                                            <td>{patientTrend.name}</td>
+                                            <td>{patientTrend.email}</td>
+                                            <td>{(patientTrend.average_reading !== null && patientTrend.average_reading !== undefined) ? parseFloat(patientTrend.average_reading).toFixed(2) : 'N/A'}</td>
+                                            <td>{(patientTrend.highest_reading !== null && patientTrend.highest_reading !== undefined) ? patientTrend.highest_reading : 'N/A'}</td>
+                                            <td>{(patientTrend.lowest_reading !== null && patientTrend.lowest_reading !== undefined) ? patientTrend.lowest_reading : 'N/A'}</td>
+                                            <td>{patientTrend.total_readings || 0}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+
+                    <h6 style={{ marginTop: '1rem' }}>AI-Powered Insights:</h6>
+                    <p><strong>Top 3 Triggers for Abnormal Readings:</strong></p>
+                    {selectedReportSummary.aiInsights && selectedReportSummary.aiInsights.topTriggers && selectedReportSummary.aiInsights.topTriggers.length > 0 ? (
+                        <ul>
+                            {selectedReportSummary.aiInsights.topTriggers.map((trigger: any, index: number) => (
+                                <li key={index}>{trigger.trigger} ({trigger.count} times)</li>
+                            ))}
+                        </ul>
+                    ) : (
+                        <p>No significant triggers found for this period.</p>
+                    )}
                 </div>
             )}
           </div>

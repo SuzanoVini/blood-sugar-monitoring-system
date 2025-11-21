@@ -57,4 +57,30 @@ router.get('/',
   }
 );
 
+/**
+ * GET /api/reports/:id/summary
+ * Retrieves the parsed summary data for a single report.
+ * Accessible only by Administrators.
+ */
+router.get('/:id/summary',
+  verifyToken,
+  requireRole('Administrator'),
+  (req, res) => {
+    const db = req.app.locals.db;
+    const reportId = parseInt(req.params.id);
+
+    if (!reportId || isNaN(reportId)) {
+      return res.status(400).json({ success: false, message: 'A valid report ID is required.' });
+    }
+
+    reportingAPI.getReportSummary(db, reportId, (err, summary) => {
+      if (err) {
+        const statusCode = err.message.includes('not found') ? 404 : 500;
+        return res.status(statusCode).json({ success: false, message: err.message });
+      }
+      res.json({ success: true, message: 'Report summary retrieved successfully', data: summary });
+    });
+  }
+);
+
 module.exports = router;

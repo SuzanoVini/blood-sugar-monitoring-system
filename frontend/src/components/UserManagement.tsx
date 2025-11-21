@@ -22,12 +22,16 @@ const UserManagement: React.FC = () => {
   const fetchData = async () => {
     setLoading(true);
     setError(null);
+    console.log('[UserManagement] Fetching data...'); // Debugging
     try {
       // These API endpoints need to be created and integrated on the backend.
       const [usersResponse, rolesResponse] = await Promise.all([
         apiService.get('/admin/users'), // Assumes a new endpoint to get all users
         apiService.get('/roles')         // Uses the existing endpoint to get roles
       ]);
+
+      console.log('[UserManagement] Raw users response:', usersResponse); // Debugging
+      console.log('[UserManagement] Raw roles response:', rolesResponse); // Debugging
 
       if (usersResponse.success && usersResponse.data) {
         setUsers(usersResponse.data);
@@ -42,6 +46,7 @@ const UserManagement: React.FC = () => {
       }
 
     } catch (err: any) {
+      console.error('[UserManagement] Error in fetchData:', err); // Debugging
       setError(err.message || 'An error occurred while fetching data.');
     } finally {
       setLoading(false);
@@ -63,11 +68,28 @@ const UserManagement: React.FC = () => {
       if (!response.success) {
         throw new Error(response.message || 'Failed to update role.');
       }
+      alert(`Role for user ${userId} updated to ${newRole} successfully!`);
       // Success, data is already updated in the UI
     } catch (err: any) {
       alert(`Error updating role: ${err.message}`);
       // Revert the UI on failure
       setUsers(originalUsers);
+    }
+  };
+
+  const handleDelete = async (userId: number, userName: string) => {
+    if (window.confirm(`Are you sure you want to delete the user "${userName}" (ID: ${userId})? This action cannot be undone.`)) {
+      try {
+        const response = await apiService.delete(`/admin/users/${userId}`);
+        if (response.success) {
+          alert(`User ${userName} deleted successfully.`);
+          setUsers(users.filter(u => u.User_ID !== userId)); // Remove user from state
+        } else {
+          throw new Error(response.message || 'Failed to delete user.');
+        }
+      } catch (err: any) {
+        alert(`Error deleting user: ${err.message}`);
+      }
     }
   };
 
@@ -92,6 +114,7 @@ const UserManagement: React.FC = () => {
               <th>Name</th>
               <th>Email</th>
               <th>Role</th>
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -111,6 +134,15 @@ const UserManagement: React.FC = () => {
                       </option>
                     ))}
                   </select>
+                </td>
+                <td>
+                  <button
+                    onClick={() => handleDelete(user.User_ID, user.Name)}
+                    className="btn secondary"
+                    style={{padding: '0.25rem 0.5rem', fontSize: '0.8rem', background: 'var(--danger)'}}
+                  >
+                    Delete
+                  </button>
                 </td>
               </tr>
             ))}
