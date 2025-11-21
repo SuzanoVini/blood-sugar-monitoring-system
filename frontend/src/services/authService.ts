@@ -9,6 +9,14 @@ interface LoginResponse {
 }
 
 const authService = {
+  register: async (userData: FormData): Promise<void> => {
+    await axios.post("/api/auth/register", userData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+  },
+
   login: async (email: string, password: string): Promise<LoginResponse> => {
     const response = await axios.post("/api/auth/login", { email, password });
     const { token, user } = response.data.data;
@@ -48,6 +56,16 @@ const authService = {
   getToken: () => localStorage.getItem(TOKEN_KEY),
 
   isAuthenticated: () => !!localStorage.getItem(TOKEN_KEY),
+
+  forgotPassword: async (email: string): Promise<any> => {
+    const response = await axios.post("/api/auth/forgot-password", { email });
+    return response.data;
+  },
+
+  resetPassword: async (token: string, password: string): Promise<any> => {
+    const response = await axios.post(`/api/auth/reset-password/${token}`, { password });
+    return response.data;
+  },
 };
 
 export default authService;
