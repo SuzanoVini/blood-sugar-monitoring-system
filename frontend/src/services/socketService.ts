@@ -95,6 +95,22 @@ class SocketService {
     }
   }
 
+  public onNewAlert(listener: (data: { message: string }) => void): void {
+    if (this.socket) {
+      this.socket.on('new_alert', listener);
+    }
+  }
+
+  /**
+   * Removes a new alert listener.
+   * @param listener The callback function to remove.
+   */
+  public offNewAlert(listener: (data: { message: string }) => void): void {
+    if (this.socket) {
+      this.socket.off('new_alert', listener);
+    }
+  }
+
   // Internal method to notify all subscribed listeners
   private notifyListeners(data: NotificationData): void {
     // This is a simple implementation. For a more robust solution,
