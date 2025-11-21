@@ -13,29 +13,32 @@ const axiosInstance = axios.create({
   headers: { "Content-Type": "application/json" }
 });
 
-axiosInstance.interceptors.request.use(config => { const token = authService.getToken(); if (token) { config.headers.Authorization = 'Bearer ' + token; } return config; });
-
-// Helper: return data or fallback
-interface ApiResponse<T = any> {
-  data: T;
-  [key: string]: any;
-}
-
-type UnwrapResponse<T = any> = ApiResponse<T> | T;
-
-const unwrap = <T = any>(res: UnwrapResponse<T>): T => {
-  if (res && typeof res === "object" && "data" in res) {
-    return (res as ApiResponse<T>).data;
+axiosInstance.interceptors.request.use(config => {
+  const token = authService.getToken();
+  if (token) {
+    config.headers.Authorization = 'Bearer ' + token;
+    console.log('apiService: Sending request with Authorization header:', config.headers.Authorization);
+  } else {
+    console.log('apiService: Sending request without Authorization header (no token found).');
   }
-  return res as T;
-};
+  return config;
+});
+
+// Helper: return data
+const extractData = (res: any) => res.data;
 
 export default {
   // readings
   async getReadings() {
+    const currentUser = await authService.getCurrentUser(); // Await current user
+    const userId = currentUser?.user_id;
+    if (!userId) {
+      console.warn("getReadings failed: No user ID found.");
+      return [];
+    }
     try {
-      const res = await axiosInstance.get("/patient/readings");
-      const data = unwrap(res);
+      const res = await axiosInstance.get("/patient/readings", { params: { patient_id: userId } });
+      const data = extractData(res);
       const readings = data.data?.readings || [];
       // Map backend PascalCase to frontend snake_case
       return readings.map((r: any) => ({
@@ -50,7 +53,6 @@ export default {
         symptoms: r.Symptoms
       }));
     } catch (err) {
-      // fallback: return empty array for dev without backend
       if (err instanceof Error) {
         console.warn("getReadings fallback to mock", err.message);
       } else {
@@ -61,52 +63,212 @@ export default {
   },
 
   async createReading(payload: Record<string, any>) {
-    const res = await axiosInstance.post("/patient/readings", payload);
-    return unwrap(res);
+    const currentUser = await authService.getCurrentUser(); // Await current user
+    const userId = currentUser?.user_id;
+    if (!userId) throw new Error("User not authenticated");
+    const res = await axiosInstance.post("/patient/readings", { ...payload, patient_id: userId });
+    return extractData(res);
   },
 
   async deleteReading(id: number | string): Promise<any> {
-    const res = await axiosInstance.delete<ApiResponse<any>>(`/patient/readings/${id}`);
-    return unwrap(res);
+    const currentUser = await authService.getCurrentUser(); // Await current user
+    const userId = currentUser?.user_id;
+    if (!userId) throw new Error("User not authenticated");
+    const res = await axiosInstance.delete(`/patient/readings/${id}`, { params: { patient_id: userId } });
+    return extractData(res);
+  },
+
+  async updateReading(id: number | string, payload: Record<string, any>): Promise<any> {
+    const currentUser = await authService.getCurrentUser(); // Await current user
+    const userId = currentUser?.user_id;
+    if (!userId) throw new Error("User not authenticated");
+    const res = await axiosInstance.put(`/patient/readings/${id}`, { ...payload, patient_id: userId });
+    return extractData(res);
   },
 
   // admin & staff
   async getCategoryThreshold() {
-    const res = await axiosInstance.get("/threshold");
-    return unwrap(res);
+    const res = await this.get("/thresholds");
+    return res.data;
   },
 
   async updateCategoryThreshold(payload: Record<string, any>) {
-    const res = await axiosInstance.put("/threshold", payload);
-    return unwrap(res);
+    const res = await this.put("/thresholds", payload);
+    return res;
+  },
+
+  async getStaffPatients() {
+    const res = await axiosInstance.get("/staff/patients");
+    const data = extractData(res);
+    const patients = data.data || []; // The backend already returns data directly
+    return patients.map((p: any) => ({
+      patient_id: p.Patient_ID,
+      name: p.Name,
+      email: p.Email,
+      status: p.Status,
+      healthcare_number: p.Healthcare_Number,
+      date_of_birth: p.Date_Of_Birth,
+      threshold_normal_low: p.Threshold_Normal_Low,
+      threshold_normal_high: p.Threshold_Normal_High,
+      profile_image: p.Profile_Image // Added profile image
+    }));
+  },
+
+  async getStaffPatientDetails(patientId: number) {
+    const res = await axiosInstance.get(`/staff/patients/${patientId}`);
+    const data = extractData(res);
+    const p = data.data;
+    return {
+      patient_id: p.Patient_ID,
+      name: p.Name,
+      email: p.Email,
+      phone: p.Phone,
+      profile_image: p.Profile_Image,
+      status: p.Status,
+      created_at: p.Created_At,
+      healthcare_number: p.Healthcare_Number,
+      date_of_birth: p.Date_Of_Birth,
+      threshold_normal_low: p.Threshold_Normal_Low,
+      threshold_normal_high: p.Threshold_Normal_High,
+    };
+  },
+
+  async getStaffPatientReadings(patientId: number, filters: any = {}) {
+    const res = await axiosInstance.get(`/staff/patients/${patientId}/readings`, { params: filters });
+    const data = extractData(res);
+    const readings = data.data || [];
+    return readings.map((r: any) => ({
+      reading_id: r.Reading_ID,
+      patient_id: r.Patient_ID,
+      datetime: r.DateTime,
+      value: r.Value,
+      unit: r.Unit,
+      category: r.Category,
+      food_notes: r.Food_Notes,
+      activity_notes: r.Activity_Notes,
+      notes: r.Notes,
+      symptoms: r.Symptoms
+    }));
+  },
+
+  async getStaffPatientFeedback(patientId: number) {
+    const res = await axiosInstance.get(`/staff/patients/${patientId}/feedback`);
+    const data = extractData(res);
+    const feedbackList = data.data || [];
+    return feedbackList.map((f: any) => ({
+      feedback_id: f.Feedback_ID,
+      specialist_id: f.Specialist_ID,
+      patient_id: f.Patient_ID,
+      content: f.Content,
+      created_at: f.Created_At,
+      specialist_name: f.Specialist_Name,
+    }));
   },
 
   // alerts
   async getAlerts() {
-    const res = await axiosInstance.get("/patient/alerts");
-    const data = unwrap(res);
+    const currentUser = await authService.getCurrentUser(); // Await current user
+    const userId = currentUser?.user_id;
+    if (!userId) {
+      console.warn("getAlerts failed: No user ID found.");
+      return [];
+    }
+    const res = await axiosInstance.get("/patient/alerts", { params: { patient_id: userId } });
+    const data = extractData(res);
     return data.data?.alerts || [];
   },
+
+  async getPatientSuggestions() {
+    const currentUser = await authService.getCurrentUser();
+    const userId = currentUser?.user_id;
+    if (!userId) {
+      console.warn("getPatientSuggestions failed: No user ID found.");
+      return [];
+    }
+    try {
+      const res = await axiosInstance.get("/patient/suggestions", { params: { patient_id: userId } });
+      const data = extractData(res);
+      const suggestions = data.data?.suggestions || [];
+      return suggestions.map((s: any) => ({
+        suggestion_id: s.Suggestion_ID,
+        patient_id: s.Patient_ID,
+        content: s.Content,
+        generated_at: s.Generated_At,
+        based_on_pattern: s.Based_On_Pattern,
+      }));
+    } catch (err) {
+      if (err instanceof Error) {
+        console.warn("getPatientSuggestions fallback to empty array", err.message);
+      } else {
+        console.warn("getPatientSuggestions fallback to empty array", err);
+      }
+      return [];
+    }
+  },
+
 
   // specialist
   async getAssignedPatients() {
     const res = await axiosInstance.get("/specialist/patients");
-    return unwrap(res);
+    const data = extractData(res);
+    const patients = data.data?.patients || [];
+    return patients.map((p: any) => ({
+      patient_id: p.Patient_ID,
+      name: p.Name,
+      healthcare_number: p.Healthcare_Number
+    }));
+  },
+
+  async getSpecialistReadings(filters: any) {
+    const res = await axiosInstance.get("/specialist/readings", { params: filters });
+    const data = extractData(res);
+    const readings = data.data?.readings || [];
+    return readings.map((r: any) => ({
+      reading_id: r.Reading_ID,
+      patient_id: r.Patient_ID,
+      patient_name: r.patient_name,
+      datetime: r.DateTime,
+      value: r.Value,
+      unit: r.Unit,
+      category: r.Category,
+      food_notes: r.Food_Notes,
+      activity_notes: r.Activity_Notes,
+      notes: r.Notes,
+      symptoms: r.Symptoms
+    }));
   },
 
   // admin: report-related
   async getAllReadings(start: string, end: string): Promise<any[]> {
-    const res = await axiosInstance.get<ApiResponse<any[]>>("/admin/readings", { params: { start, end }});
-    return unwrap<any[]>(res.data);
+    const res = await axiosInstance.get("/admin/readings", { params: { start, end }});
+    return extractData(res).data;
   },
 
   async getAIPatternAnalyses(start: string, end: string) {
     const res = await axiosInstance.get("/admin/analyses", { params: { start, end }});
-    return unwrap(res);
+    return extractData(res);
   },
 
   async saveReport(report: Record<string, any>) {
     const res = await axiosInstance.post("/admin/reports", report);
-    return unwrap(res);
+    return extractData(res);
+  },
+
+  // --- NEW GENERIC METHODS ---
+  async get(endpoint: string, params?: any) {
+    const res = await axiosInstance.get(endpoint, { params });
+    return res.data; // Return the full backend response object
+  },
+  async post(endpoint: string, data: any, config?: any) {
+    const res = await axiosInstance.post(endpoint, data, config);
+    return res.data; // Return the full backend response object
+  },
+  async put(endpoint: string, data: any, config?: any) {
+    const res = await axiosInstance.put(endpoint, data, config);
+    return res.data; // Return the full backend response object
+  },
+  async delete(endpoint: string) {
+    const res = await axiosInstance.delete(endpoint);
+    return res.data; // Return the full backend response object
   }
 };
