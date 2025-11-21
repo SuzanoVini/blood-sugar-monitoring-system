@@ -10,7 +10,7 @@
  */
 function getUserProfile(db, userId, callback) {
   const query = `
-    SELECT Name, Email, Phone, Profile_Image
+    SELECT Name, Email, Phone, Profile_Image AS profile_image
     FROM User
     WHERE User_ID = ?
   `;
@@ -36,6 +36,9 @@ function getUserProfile(db, userId, callback) {
  * @param {Function} callback - Callback function(err, result)
  */
 function updateUserProfile(db, userId, updateData, callback) {
+  console.log(`[DEBUG] Attempting to update profile for userId: ${userId}`);
+  console.log('[DEBUG] Update data received:', updateData);
+
   const updateFields = [];
   const queryParams = [];
 
@@ -43,9 +46,13 @@ function updateUserProfile(db, userId, updateData, callback) {
     updateFields.push('Name = ?');
     queryParams.push(updateData.name);
   }
-  if (updateData.phone !== undefined && updateData.phone !== null) {
+  if (updateData.phone !== undefined) { // Allow empty string for phone
     updateFields.push('Phone = ?');
     queryParams.push(updateData.phone);
+  }
+  if (updateData.profileImage !== undefined) {
+    updateFields.push('Profile_Image = ?');
+    queryParams.push(updateData.profileImage);
   }
   // Profile_Image updates would involve file uploads and separate logic.
 
@@ -60,17 +67,23 @@ function updateUserProfile(db, userId, updateData, callback) {
     SET ${updateFields.join(', ')}
     WHERE User_ID = ?
   `;
+  
+  console.log('[DEBUG] Executing SQL query:', query);
+  console.log('[DEBUG] With query params:', queryParams);
 
   db.query(query, queryParams, (err, results) => {
     if (err) {
       console.error(`Error updating profile for User ${userId}:`, err);
       return callback(err, null);
     }
+    
+    console.log('[DEBUG] Database update result:', results);
+
     if (results.affectedRows === 0) {
       return callback(null, { success: false, message: 'User not found or no changes made' });
     }
     console.log(`User ${userId} profile updated.`);
-    callback(null, { success: true, user_id: userId });
+    callback(null, { success: true, user_id: userId, affectedRows: results.affectedRows });
   });
 }
 

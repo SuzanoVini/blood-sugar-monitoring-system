@@ -6,6 +6,7 @@
 const thresholdAPI = require('./thresholdAPI');
 const aiProcessingAPI = require('./aiProcessingAPI'); // Import the AI processing module
 const alertAPI = require('../api/alertAPI'); // Import the Alert processing module
+const alertSystem = require('../alertSystem');
 
 /**
  * Get blood sugar readings for a patient with optional filtering and pagination
@@ -128,9 +129,14 @@ function getReadingsCount(db, patientId, filters, callback) {
 function addReading(db, patientId, readingData, callback) {
   const { dateTime, value, unit, foodNotes, activityNotes, event, symptoms, notes } = readingData;
 
+  console.log('addReading: Categorizing reading...');
   // First, categorize the reading based on thresholds
   thresholdAPI.categorizeReading(db, value, patientId, (err, category) => {
-    if (err) return callback(err, null);
+    if (err) {
+      console.error('addReading: Error categorizing reading:', err);
+      return callback(err, null);
+    }
+    console.log('addReading: Reading categorized as:', category);
 
     const query = `
       INSERT INTO Sugar_Reading
@@ -151,8 +157,13 @@ function addReading(db, patientId, readingData, callback) {
       category
     ];
 
+    console.log('addReading: Inserting reading into database...');
     db.query(query, values, (err, results) => {
-      if (err) return callback(err, null);
+      if (err) {
+        console.error('addReading: Error inserting reading into database:', err);
+        return callback(err, null);
+      }
+      console.log('addReading: Reading inserted into database. ID:', results.insertId);
 
       const newReading = {
         reading_id: results.insertId,
@@ -168,24 +179,18 @@ function addReading(db, patientId, readingData, callback) {
       // If the new reading is abnormal, trigger background processing tasks.
       if (category === 'Abnormal') {
         // Trigger AI analysis
-        console.log(`Abnormal reading detected. Triggering AI analysis for patient ${patientId}...`);
+        console.log(`addReading: Abnormal reading detected. Triggering AI analysis for patient ${patientId}...`);
         aiProcessingAPI.analyzeAndCreateSuggestions(db, patientId, (aiErr, aiResult) => {
           if (aiErr) {
-            console.error(`AI background processing failed for patient ${patientId}:`, aiErr);
+            console.error(`addReading: AI background processing failed for patient ${patientId}:`, aiErr);
           } else {
-            console.log(`AI background processing completed for patient ${patientId}:`, aiResult);
+            console.log(`addReading: AI background processing completed for patient ${patientId}:`, aiResult);
           }
         });
         
-        // Trigger Alert check
-        console.log(`Abnormal reading detected. Triggering Alert check for patient ${patientId}...`);
-        alertAPI.checkAndTriggerAlerts(db, patientId, (alertErr, alertResult) => {
-            if (alertErr) {
-                console.error(`Alert check background processing failed for patient ${patientId}:`, alertErr);
-            } else {
-                console.log(`Alert check background processing completed for patient ${patientId}:`, alertResult);
-            }
-        });
+        // Check for abnormal readings count and send real-time alert
+        console.log(`addReading: Abnormal reading detected. Triggering alert system for patient ${patientId}...`);
+        alertSystem.checkAbnormalReadings(db, patientId);
       }
 
       callback(null, newReading);

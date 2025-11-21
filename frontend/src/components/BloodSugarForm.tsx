@@ -1,35 +1,50 @@
-import React, { useState, type FormEvent } from "react";
+import React, { useState, useEffect, type FormEvent } from "react";
 import api from "../services/apiService";
 
 interface BloodSugarReading {
+  reading_id?: string | number;
   value: number;
   unit: "mg/dl" | "mmol/L";
   datetime: string;
   food_notes?: string;
   activity_notes?: string;
   symptoms?: string;
+  notes?: string;
 }
 interface BloodSugarFormProps {
-  onSaved?: (reading: BloodSugarReading) => void;
-  defaultValues?: Partial<BloodSugarReading>;
+  onSaved?: (reading: any) => void;
+  readingToEdit?: Partial<BloodSugarReading>;
+  isEditMode: boolean;
 }
 
 const BloodSugarForm: React.FC<BloodSugarFormProps> = ({
   onSaved,
-  defaultValues = {},
+  readingToEdit = {},
+  isEditMode,
 }) => {
-  const [value, setValue] = useState(defaultValues.value?.toString() || "");
+  const [value, setValue] = useState(readingToEdit.value?.toString() || "");
   const [unit, setUnit] = useState<"mg/dl" | "mmol/L">(
-    defaultValues.unit || "mg/dl"
+    readingToEdit.unit || "mg/dl"
   );
   const [datetime, setDatetime] = useState(
-    defaultValues.datetime || new Date().toISOString().slice(0, 16)
+    readingToEdit.datetime ? new Date(readingToEdit.datetime).toISOString().slice(0, 16) : new Date().toISOString().slice(0, 16)
   );
-  const [food, setFood] = useState(defaultValues.food_notes || "");
-  const [activity, setActivity] = useState(defaultValues.activity_notes || "");
-  const [symptoms, setSymptoms] = useState(defaultValues.symptoms || "");
+  const [food, setFood] = useState(readingToEdit.food_notes || "");
+  const [activity, setActivity] = useState(readingToEdit.activity_notes || "");
+  const [symptoms, setSymptoms] = useState(readingToEdit.symptoms || readingToEdit.notes || "");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (isEditMode && readingToEdit) {
+      setValue(readingToEdit.value?.toString() || "");
+      setUnit(readingToEdit.unit || "mg/dl");
+      setDatetime(readingToEdit.datetime ? new Date(readingToEdit.datetime).toISOString().slice(0, 16) : new Date().toISOString().slice(0, 16));
+      setFood(readingToEdit.food_notes || "");
+      setActivity(readingToEdit.activity_notes || "");
+      setSymptoms(readingToEdit.symptoms || readingToEdit.notes || "");
+    }
+  }, [isEditMode, readingToEdit]);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -48,13 +63,25 @@ const BloodSugarForm: React.FC<BloodSugarFormProps> = ({
         activityNotes: activity,
         symptoms,
       };
-      const res = await api.createReading(payload);
+
+      let res;
+      if (isEditMode) {
+        if (!readingToEdit.reading_id) {
+          throw new Error("Reading ID is missing for update.");
+        }
+        res = await api.updateReading(readingToEdit.reading_id, payload);
+      } else {
+        res = await api.createReading(payload);
+      }
+
       console.log("Reading saved successfully:", res);
       onSaved?.(res);
-      setValue("");
-      setFood("");
-      setActivity("");
-      setSymptoms("");
+      if (!isEditMode) {
+        setValue("");
+        setFood("");
+        setActivity("");
+        setSymptoms("");
+      }
     } catch (err) {
       console.error(err);
       setError("Failed to save reading.");
@@ -66,7 +93,7 @@ const BloodSugarForm: React.FC<BloodSugarFormProps> = ({
   return (
     <form className="card" onSubmit={handleSubmit}>
       <div className="card-hd">
-        <h4>Enter Blood Sugar</h4>
+        <h4>{isEditMode ? "Edit Blood Sugar Reading" : "Enter Blood Sugar"}</h4>
       </div>
 
       <div className="card-bd">
@@ -160,7 +187,7 @@ const BloodSugarForm: React.FC<BloodSugarFormProps> = ({
 
         <div className="btn-row">
           <button type="submit" className="btn" disabled={loading}>
-            {loading ? "Saving..." : "Save Reading"}
+            {loading ? "Saving..." : (isEditMode ? "Update Reading" : "Save Reading")}
           </button>
         </div>
       </div>

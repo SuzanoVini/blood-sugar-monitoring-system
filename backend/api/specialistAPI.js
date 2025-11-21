@@ -10,6 +10,7 @@
  * @param {Function} callback - Callback function(err, patients)
  */
 function getAssignedPatients(db, specialistId, callback) {
+  console.log('DEBUG: Fetching assigned patients for specialistId:', specialistId); // Debugging line
   const query = `
     SELECT
       p.Patient_ID,
@@ -428,12 +429,6 @@ function getPatientAlerts(db, specialistId, patientId, limit, callback) {
   });
 }
 
-/**
- * Get dashboard statistics for specialist
- * @param {Object} db - Database connection
- * @param {number} specialistId - Specialist ID
- * @param {Function} callback - Callback function(err, stats)
- */
 function getSpecialistDashboardStats(db, specialistId, callback) {
   const query = `
     SELECT
@@ -458,6 +453,60 @@ function getSpecialistDashboardStats(db, specialistId, callback) {
   });
 }
 
+/**
+ * Get readings for all patients assigned to a specialist, with filtering
+ * @param {Object} db - Database connection
+ * @param {number} specialistId - Specialist ID
+ * @param {Object} filters - Optional filters: { startDate, endDate, category, patientName }
+ * @param {Function} callback - Callback function(err, readings)
+ */
+function getReadingsForSpecialist(db, specialistId, filters, callback) {
+  let query = `
+    SELECT
+      sr.Reading_ID,
+      sr.Patient_ID,
+      sr.DateTime,
+      sr.Value,
+      sr.Unit,
+      sr.Category,
+      sr.Food_Notes,
+      sr.Activity_Notes,
+      sr.Notes,
+      sr.Symptoms,
+      u.Name as patient_name
+    FROM Sugar_Reading sr
+    JOIN Specialist_Patient_Assignment spa ON sr.Patient_ID = spa.Patient_ID
+    JOIN User u ON sr.Patient_ID = u.User_ID
+    WHERE spa.Specialist_ID = ?
+  `;
+
+  const queryParams = [specialistId];
+
+  if (filters.startDate) {
+    query += ' AND sr.DateTime >= ?';
+    queryParams.push(filters.startDate);
+  }
+  if (filters.endDate) {
+    query += ' AND sr.DateTime <= ?';
+    queryParams.push(filters.endDate);
+  }
+  if (filters.category) {
+    query += ' AND sr.Category = ?';
+    queryParams.push(filters.category);
+  }
+  if (filters.patientName) {
+    query += ' AND u.Name LIKE ?';
+    queryParams.push(`%${filters.patientName}%`);
+  }
+
+  query += ' ORDER BY sr.DateTime DESC';
+
+  db.query(query, queryParams, (err, results) => {
+    if (err) return callback(err, null);
+    callback(null, results);
+  });
+}
+
 module.exports = {
   getAssignedPatients,
   getPatientDetails,
@@ -468,5 +517,6 @@ module.exports = {
   verifyAssignment,
   verifySpecialist,
   getPatientAlerts,
-  getSpecialistDashboardStats
+  getSpecialistDashboardStats,
+  getReadingsForSpecialist
 };

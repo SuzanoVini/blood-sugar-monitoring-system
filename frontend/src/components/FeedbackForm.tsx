@@ -29,14 +29,13 @@ const FeedbackForm: React.FC<FeedbackFormProps> = ({ patientId, specialistId, on
       return;
     }
 
-    try {
-      // API call to the backend feedback route (POST /api/feedback)
-      const response = await apiService.post('/feedback', {
-        specialist_id: specialistId,
-        patient_id: patientId,
-        content: content.trim(),
-      });
-
+          try {
+            // API call to the backend feedback route (POST /api/specialist/feedback)
+            const response = await apiService.post('/specialist/feedback', {
+              specialist_id: specialistId,
+              patient_id: patientId,
+              content: content.trim(),
+            });
       if (response.success) {
         setSuccess('Feedback submitted successfully!');
         setContent(''); // Clear the form

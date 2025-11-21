@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import authService from "../services/authService";
 
 const AuthenticationDashboard: React.FC = () => {
@@ -45,6 +45,7 @@ const AuthenticationDashboard: React.FC = () => {
           console.log("Redirecting to:", redirectRoute);
         }
         navigate(redirectRoute);
+        window.location.reload();
       } else {
         setError("Invalid email or password.");
       }
@@ -104,6 +105,12 @@ const AuthenticationDashboard: React.FC = () => {
         >
           {loading ? "Logging in..." : "Login"}
         </button>
+        <div style={{ marginTop: 16 }}>
+          <Link to="/register" style={{ color: '#2b7cff' }}>Don't have an account? Register here</Link>
+        </div>
+        <div style={{ marginTop: 10 }}>
+          <Link to="/forgot-password" style={{ color: '#2b7cff' }}>Forgot Password?</Link>
+        </div>
       </div>
     </div>
   );

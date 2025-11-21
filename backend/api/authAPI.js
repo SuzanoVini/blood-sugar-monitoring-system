@@ -4,6 +4,7 @@
 //          login, logout, and profile retrieval
 
 const bcrypt = require('bcrypt');
+const crypto = require('crypto');
 
 // bcrypt salt rounds for password hashing
 const SALT_ROUNDS = 10;
@@ -15,7 +16,7 @@ const SALT_ROUNDS = 10;
  * @param {Function} callback - Callback function(err, result)
  */
 function registerPatient(db, userData, callback) {
-  const { name, email, password, phone, healthcareNumber, dateOfBirth } = userData;
+  const { name, email, password, phone, healthcareNumber, dateOfBirth, profileImage } = userData;
 
   // Check if email already exists
   const checkEmailQuery = 'SELECT User_ID FROM User WHERE Email = ?';
@@ -33,11 +34,11 @@ function registerPatient(db, userData, callback) {
 
       // Insert into User table
       const insertUserQuery = `
-        INSERT INTO User (Name, Email, Password_Hash, Phone, Role, Status, Created_At)
-        VALUES (?, ?, ?, ?, 'Patient', 'Active', NOW())
+        INSERT INTO User (Name, Email, Password_Hash, Phone, Role, Status, Profile_Image, Created_At)
+        VALUES (?, ?, ?, ?, 'Patient', 'Active', ?, NOW())
       `;
 
-      const userValues = [name, email, passwordHash, phone || null];
+      const userValues = [name, email, passwordHash, phone || null, profileImage];
 
       db.query(insertUserQuery, userValues, (err, userResult) => {
         if (err) return callback(err, null);
@@ -190,9 +191,86 @@ function logoutUser(db, userId, callback) {
   callback(null, { success: true, message: 'Logged out successfully' });
 }
 
+/**
+ * Request password reset
+ * @param {Object} db - Database connection
+ * @param {string} email - User email
+ * @param {Function} callback - Callback function(err, result)
+ */
+function forgotPassword(db, email, callback) {
+  const findUserQuery = 'SELECT User_ID, Email FROM User WHERE Email = ?';
+  db.query(findUserQuery, [email], (err, results) => {
+    if (err) return callback(err, null);
+    if (results.length === 0) {
+      // Return generic success to prevent email enumeration
+      return callback(null, { message: 'If an account with that email exists, a password reset link has been sent.' });
+    }
+
+    const user = results[0];
+    const token = crypto.randomBytes(20).toString('hex');
+    const expires = new Date();
+    expires.setHours(expires.getHours() + 1); // Token valid for 1 hour
+
+    const updateTokenQuery = `
+      UPDATE User
+      SET Password_Reset_Token = ?, Password_Reset_Expires = ?
+      WHERE User_ID = ?
+    `;
+    db.query(updateTokenQuery, [token, expires, user.User_ID], (err) => {
+      if (err) return callback(err, null);
+
+      // Simulate sending email by logging the reset link
+      const resetLink = `http://localhost:3000/reset-password/${token}`;
+      console.log(`Password Reset Link for ${user.Email}: ${resetLink}`);
+
+      callback(null, { message: 'If an account with that email exists, a password reset link has been sent.' });
+    });
+  });
+}
+
+/**
+ * Reset user password
+ * @param {Object} db - Database connection
+ * @param {string} token - Password reset token
+ * @param {string} newPassword - New password (plain text)
+ * @param {Function} callback - Callback function(err, result)
+ */
+function resetPassword(db, token, newPassword, callback) {
+  const findUserQuery = `
+    SELECT User_ID, Password_Reset_Expires
+    FROM User
+    WHERE Password_Reset_Token = ? AND Password_Reset_Expires > NOW()
+  `;
+  db.query(findUserQuery, [token], (err, results) => {
+    if (err) return callback(err, null);
+    if (results.length === 0) {
+      return callback(new Error('Invalid or expired password reset token.'), null);
+    }
+
+    const user = results[0];
+
+    bcrypt.hash(newPassword, SALT_ROUNDS, (err, passwordHash) => {
+      if (err) return callback(err, null);
+
+      const updatePasswordQuery = `
+        UPDATE User
+        SET Password_Hash = ?, Password_Reset_Token = NULL, Password_Reset_Expires = NULL
+        WHERE User_ID = ?
+      `;
+      db.query(updatePasswordQuery, [passwordHash, user.User_ID], (err) => {
+        if (err) return callback(err, null);
+        callback(null, { message: 'Password has been reset successfully.' });
+      });
+    });
+  });
+}
+
+
 module.exports = {
   registerPatient,
   loginUser,
   getUserProfile,
-  logoutUser
+  logoutUser,
+  forgotPassword,
+  resetPassword
 };

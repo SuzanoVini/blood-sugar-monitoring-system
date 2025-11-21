@@ -6,29 +6,18 @@
 const express = require('express');
 const router = express.Router();
 const thresholdAPI = require('../api/thresholdAPI');
+const staffAPI = require('../api/staffAPI'); // Import staffAPI
+const { verifyToken, requireRole } = require('../middleware/auth'); // Import auth middleware
 
-// Middleware to validate staff_id from request
-function validateStaffId(req, res, next) {
-  const staffId = parseInt(req.body.staff_id || req.query.staff_id);
-
-  if (!staffId || isNaN(staffId)) {
-    return res.status(400).json({
-      success: false,
-      message: 'Valid staff_id is required'
-    });
-  }
-
-  req.staffId = staffId;
-  next();
-}
+// Middleware to validate staff_id from request - REMOVED
 
 /**
  * GET /api/staff/thresholds
  * Get current system threshold settings
- * Query: staff_id (required)
+ * Accessible by Clinic_Staff and Administrator roles.
  * Response: { success, message, data: { Threshold_ID, Normal_Low, Normal_High, ..., Effective_Date } }
  */
-router.get('/thresholds', validateStaffId, (req, res) => {
+router.get('/thresholds', verifyToken, requireRole('Clinic_Staff', 'Administrator'), (req, res) => {
   const db = req.app.locals.db;
 
   thresholdAPI.getSystemThresholds(db, (err, thresholds) => {
@@ -58,11 +47,12 @@ router.get('/thresholds', validateStaffId, (req, res) => {
 /**
  * PUT /api/staff/thresholds
  * Update system threshold settings (creates new versioned record)
- * Body: staff_id (required), Normal_Low, Normal_High, Borderline_Low, Borderline_High,
+ * Accessible by Clinic_Staff and Administrator roles.
+ * Body: Normal_Low, Normal_High, Borderline_Low, Borderline_High,
  *       Abnormal_Low, Abnormal_High (all required)
  * Response: { success, message, data: { threshold_id } }
  */
-router.put('/thresholds', validateStaffId, (req, res) => {
+router.put('/thresholds', verifyToken, requireRole('Clinic_Staff', 'Administrator'), (req, res) => {
   const db = req.app.locals.db;
 
   const {
@@ -182,7 +172,7 @@ router.put('/thresholds', validateStaffId, (req, res) => {
       });
     }
 
-    console.log(`System thresholds updated by staff ${req.staffId}, new Threshold_ID: ${result.threshold_id}`);
+    console.log(`System thresholds updated by user ${req.user.user_id}, new Threshold_ID: ${result.threshold_id}`);
 
     res.status(201).json({
       success: true,
@@ -198,11 +188,12 @@ router.put('/thresholds', validateStaffId, (req, res) => {
 /**
  * GET /api/staff/patients
  * Get read-only list of all patients
- * Query: staff_id (required), limit (optional), offset (optional)
+ * Accessible by Clinic_Staff and Administrator roles.
+ * Query: limit (optional), offset (optional)
  * Response: { success, message, data: [{ Patient_ID, Name, Email, Healthcare_Number, Date_Of_Birth,
  *             Status, Threshold_Normal_Low, Threshold_Normal_High }] }
  */
-router.get('/patients', validateStaffId, (req, res) => {
+router.get('/patients', verifyToken, requireRole('Clinic_Staff', 'Administrator'), (req, res) => {
   const db = req.app.locals.db;
 
   // Get optional pagination parameters
@@ -262,6 +253,84 @@ router.get('/patients', validateStaffId, (req, res) => {
       message: 'Patient list retrieved successfully',
       data: results
     });
+  });
+});
+
+/**
+ * GET /api/staff/patients/:patientId
+ * Get details for a specific patient.
+ * Accessible by Clinic_Staff and Administrator roles.
+ */
+router.get('/patients/:patientId', verifyToken, requireRole('Clinic_Staff', 'Administrator'), (req, res) => {
+  const db = req.app.locals.db;
+  const patientId = parseInt(req.params.patientId);
+
+  if (isNaN(patientId)) {
+    return res.status(400).json({ success: false, message: 'Invalid patient ID' });
+  }
+
+  staffAPI.getStaffPatientDetails(db, patientId, (err, patient) => {
+    if (err) {
+      console.error('Error retrieving patient details:', err);
+      return res.status(500).json({ success: false, message: 'Error retrieving patient details' });
+    }
+    if (!patient) {
+      return res.status(404).json({ success: false, message: 'Patient not found' });
+    }
+    res.json({ success: true, message: 'Patient details retrieved', data: patient });
+  });
+});
+
+/**
+ * GET /api/staff/patients/:patientId/readings
+ * Get all readings for a specific patient.
+ * Accessible by Clinic_Staff and Administrator roles.
+ */
+router.get('/patients/:patientId/readings', verifyToken, requireRole('Clinic_Staff', 'Administrator'), (req, res) => {
+  const db = req.app.locals.db;
+  const patientId = parseInt(req.params.patientId);
+
+  if (isNaN(patientId)) {
+    return res.status(400).json({ success: false, message: 'Invalid patient ID' });
+  }
+
+  // Optional filters for readings (e.g., date range, category) can be added here
+  const filters = {
+    startDate: req.query.startDate || null,
+    endDate: req.query.endDate || null,
+    category: req.query.category || null,
+    limit: req.query.limit || null,
+    offset: req.query.offset || null,
+  };
+
+  staffAPI.getStaffPatientReadings(db, patientId, filters, (err, readings) => {
+    if (err) {
+      console.error('Error retrieving patient readings:', err);
+      return res.status(500).json({ success: false, message: 'Error retrieving patient readings' });
+    }
+    res.json({ success: true, message: 'Patient readings retrieved', data: readings });
+  });
+});
+
+/**
+ * GET /api/staff/patients/:patientId/feedback
+ * Get all feedback for a specific patient.
+ * Accessible by Clinic_Staff and Administrator roles.
+ */
+router.get('/patients/:patientId/feedback', verifyToken, requireRole('Clinic_Staff', 'Administrator'), (req, res) => {
+  const db = req.app.locals.db;
+  const patientId = parseInt(req.params.patientId);
+
+  if (isNaN(patientId)) {
+    return res.status(400).json({ success: false, message: 'Invalid patient ID' });
+  }
+
+  staffAPI.getStaffPatientFeedback(db, patientId, (err, feedback) => {
+    if (err) {
+      console.error('Error retrieving patient feedback:', err);
+      return res.status(500).json({ success: false, message: 'Error retrieving patient feedback' });
+    }
+    res.json({ success: true, message: 'Patient feedback retrieved', data: feedback });
   });
 });
 

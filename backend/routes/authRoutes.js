@@ -8,13 +8,28 @@ const router = express.Router();
 const authAPI = require('../api/authAPI');
 const jwt = require('jsonwebtoken');
 const { verifyToken } = require('../middleware/auth');
+const multer = require('multer');
+const path = require('path');
+const alertAPI = require('../api/alertAPI'); // Import alertAPI
+const socketManager = require('../socketManager'); // Import socketManager
+
+// Multer configuration for file uploads
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, 'uploads/');
+  },
+  filename: function (req, file, cb) {
+    cb(null, Date.now() + path.extname(file.originalname)); // Append extension
+  }
+});
+const upload = multer({ storage: storage });
 
 /**
  * POST /api/auth/register
  * Register new patient account
- * Body: name, email, password, healthcareNumber, dateOfBirth, phone (optional)
+ * Body: name, email, password, healthcareNumber, dateOfBirth, phone (optional), profileImage (optional file)
  */
-router.post('/register', (req, res) => {
+router.post('/register', upload.single('profileImage'), (req, res) => {
   const db = req.app.locals.db;
 
   // Validate required fields
@@ -59,7 +74,8 @@ router.post('/register', (req, res) => {
     password: password,
     phone: req.body.phone || null,
     healthcareNumber: healthcareNumber.trim(),
-    dateOfBirth: dateOfBirth
+    dateOfBirth: dateOfBirth,
+    profileImage: req.file ? req.file.path.replace(/\\/g, "/") : null
   };
 
   authAPI.registerPatient(db, userData, (err, result) => {
@@ -261,11 +277,112 @@ router.get('/profile', (req, res) => {
  * Header: Authorization: Bearer <token>
  */
 router.get('/me', verifyToken, function (req, res) {
+  const db = req.app.locals.db;
   // req.user is set by verifyToken middleware
   res.json({
     success: true,
     message: 'Authenticated user retrieved',
     data: req.user
+  });
+
+  // If the authenticated user is a specialist, check for undelivered alerts
+  if (req.user.role === 'Specialist' && req.user.user_id) {
+    const specialistId = req.user.user_id;
+    alertAPI.getUndeliveredAlertsForSpecialist(db, specialistId, (err, alerts) => {
+      if (err) {
+        console.error('Error fetching undelivered alerts for specialist:', err);
+        return; // Don't block the response, just log the error
+      }
+
+      if (alerts && alerts.length > 0) {
+        alerts.forEach(alert => {
+          const notificationData = {
+            id: `alert-${alert.Alert_ID}`,
+            type: 'alert',
+            title: `Alert: High Abnormal Readings for Patient ${alert.patientName}`,
+            message: `Patient ${alert.patientName} (ID: ${alert.Patient_ID}) has had ${alert.Abnormal_Count} abnormal blood sugar readings this week. Please review their profile.`,
+            timestamp: alert.Sent_At,
+            patientId: alert.Patient_ID
+          };
+
+          socketManager.sendNotificationToUser(specialistId, notificationData);
+
+          // Mark alert as delivered to specialist
+          alertAPI.markAlertAsDeliveredToSpecialist(db, alert.Alert_ID, specialistId, (markErr) => {
+            if (markErr) {
+              console.error(`Error marking alert ${alert.Alert_ID} as delivered to specialist ${specialistId}:`, markErr);
+            }
+          });
+        });
+        console.log(`Delivered ${alerts.length} pending alerts to specialist ${specialistId}`);
+      }
+    });
+  }
+});
+
+/**
+ * POST /api/auth/forgot-password
+ * Request a password reset link
+ * Body: email
+ */
+router.post('/forgot-password', (req, res) => {
+  const db = req.app.locals.db;
+  const { email } = req.body;
+
+  if (!email) {
+    return res.status(400).json({
+      success: false,
+      message: 'Email is required'
+    });
+  }
+
+  authAPI.forgotPassword(db, email, (err, result) => {
+    if (err) {
+      console.error('Error in forgot password:', err);
+      // Always return a generic success message to prevent user enumeration
+      return res.json({
+        success: true,
+        message: 'If an account with that email exists, a password reset link has been sent.'
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'If an account with that email exists, a password reset link has been sent.'
+    });
+  });
+});
+
+/**
+ * POST /api/auth/reset-password/:token
+ * Reset user password using a token
+ * Body: password
+ */
+router.post('/reset-password/:token', (req, res) => {
+  const db = req.app.locals.db;
+  const { token } = req.params;
+  const { password } = req.body;
+
+  if (!password || password.length < 6) {
+    return res.status(400).json({
+      success: false,
+      message: 'Password must be at least 6 characters long'
+    });
+  }
+
+  authAPI.resetPassword(db, token, password, (err, result) => {
+    if (err) {
+      console.error('Error resetting password:', err);
+      return res.status(400).json({
+        success: false,
+        message: err.message || 'Invalid or expired token.'
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Password has been reset successfully.'
+    });
   });
 });
 

@@ -47,8 +47,12 @@ function getPatientSpecialist(db, patientId, callback) {
 
 // Create alert record in database
 function createAlert(db, patientId, abnormalCount, specialistId, callback) {
-  const weekStart = new Date();
-  weekStart.setDate(weekStart.getDate() - 7);
+  const now = new Date();
+  const dayOfWeek = now.getDay(); // 0 for Sunday, 1 for Monday, etc.
+  const weekStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - dayOfWeek);
+  weekStart.setHours(0, 0, 0, 0); // Set to the beginning of the day
+
+  console.log('createAlert: Calculated weekStart:', weekStart);
   
   const recipients = `Patient ${patientId}, Specialist ${specialistId}`;
   
@@ -89,6 +93,55 @@ function getAlertsByPatient(db, patientId, callback) {
   db.query(query, [patientId], (err, results) => {
     if (err) return callback(err, null);
     callback(null, results);
+  });
+}
+
+/**
+ * Get undelivered alerts for a specialist's assigned patients.
+ * @param {Object} db - Database connection
+ * @param {number} specialistId - Specialist ID
+ * @param {Function} callback - Callback function(err, alerts)
+ */
+function getUndeliveredAlertsForSpecialist(db, specialistId, callback) {
+  const query = `
+    SELECT a.*, p.Name as patientName
+    FROM Alert a
+    JOIN Specialist_Patient_Assignment spa ON a.Patient_ID = spa.Patient_ID
+    JOIN User p ON a.Patient_ID = p.User_ID
+    WHERE spa.Specialist_ID = ?
+      AND a.Specialist_Delivered_At IS NULL
+    ORDER BY a.Sent_At ASC;
+  `;
+  console.log('getUndeliveredAlertsForSpecialist: Query:', query); // Added log
+  console.log('getUndeliveredAlertsForSpecialist: Params:', [specialistId]); // Added log
+
+  db.query(query, [specialistId], (err, results) => {
+    if (err) {
+      console.error('getUndeliveredAlertsForSpecialist: Error fetching alerts:', err); // Added log
+      return callback(err, null);
+    }
+    console.log('getUndeliveredAlertsForSpecialist: Found alerts:', results.length); // Added log
+    callback(null, results);
+  });
+}
+
+/**
+ * Mark an alert as delivered to a specialist.
+ * @param {Object} db - Database connection
+ * @param {number} alertId - The ID of the alert to mark as delivered.
+ * @param {number} specialistId - The ID of the specialist to whom the alert was delivered.
+ * @param {Function} callback - Callback function(err, result)
+ */
+function markAlertAsDeliveredToSpecialist(db, alertId, specialistId, callback) {
+  const query = `
+    UPDATE Alert
+    SET Specialist_Delivered_At = NOW()
+    WHERE Alert_ID = ?;
+  `;
+
+  db.query(query, [alertId], (err, results) => {
+    if (err) return callback(err, null);
+    callback(null, { success: true, alert_id: alertId });
   });
 }
 

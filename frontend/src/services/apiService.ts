@@ -98,9 +98,8 @@ export default {
   },
 
   async getStaffPatients() {
-    const res = await axiosInstance.get("/staff/patients");
-    const data = extractData(res);
-    const patients = data.data || []; // The backend already returns data directly
+    const res = await this.get("/staff/patients");
+    const patients = res.data || [];
     return patients.map((p: any) => ({
       patient_id: p.Patient_ID,
       name: p.Name,
@@ -110,7 +109,7 @@ export default {
       date_of_birth: p.Date_Of_Birth,
       threshold_normal_low: p.Threshold_Normal_Low,
       threshold_normal_high: p.Threshold_Normal_High,
-      profile_image: p.Profile_Image // Added profile image
+      profile_image: p.Profile_Image
     }));
   },
 

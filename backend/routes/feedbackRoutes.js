@@ -25,21 +25,9 @@ function validateSpecialistId(req, res, next) {
 }
 
 /**
- * Middleware to validate patient ID from request
+ * Middleware to validate patient ID from request - REMOVED, logic moved inline
  */
-function validatePatientId(req, res, next) {
-  const patientId = parseInt(req.body.patient_id || req.query.patient_id || req.params.patient_id);
-
-  if (!patientId || isNaN(patientId)) {
-    return res.status(400).json({
-      success: false,
-      message: 'Valid patient_id is required'
-    });
-  }
-
-  req.patientId = patientId;
-  next();
-}
+// function validatePatientId(req, res, next) { ... }
 
 /**
  * Enforce that a Specialist can only access/manage their own feedback or specific patient feedback
@@ -73,11 +61,20 @@ router.post('/',
   verifyToken,
   requireRole('Specialist', 'Administrator'), // Only Specialists or Admins can create feedback
   validateSpecialistId,
-  validatePatientId,
+  (req, res, next) => { // Added inline middleware to set req.patientId
+    const patientId = parseInt(req.body.patient_id);
+    if (!patientId || isNaN(patientId)) {
+      return res.status(400).json({ success: false, message: 'Valid patient_id in body is required.' });
+    }
+    req.patientId = patientId;
+    next();
+  },
   enforceFeedbackOwnership, // Ensure specialist is creating feedback for themselves or an admin is
   (req, res) => {
     const db = req.app.locals.db;
-    const { specialistId, patientId, content } = req.body;
+    const specialistId = req.specialistId; // specialistId already set by validateSpecialistId
+    const patientId = req.patientId; // patientId now set by inline middleware
+    const { content } = req.body;
 
     if (!content || typeof content !== 'string' || content.trim().length === 0) {
       return res.status(400).json({ success: false, message: 'Feedback content is required.' });
@@ -106,11 +103,18 @@ router.post('/',
 router.get('/patient/:patientId',
   verifyToken,
   requireRole('Patient', 'Specialist', 'Clinic_Staff', 'Administrator'),
-  validatePatientId,
+  (req, res, next) => { // Inline middleware to set req.patientId from params
+    const patientId = parseInt(req.params.patientId);
+    if (!patientId || isNaN(patientId)) {
+      return res.status(400).json({ success: false, message: 'Valid patientId in URL is required.' });
+    }
+    req.patientId = patientId;
+    next();
+  },
   enforceFeedbackOwnership, // Patient can only view their own, specialist can view their assigned, admin/staff can view all
   (req, res) => {
     const db = req.app.locals.db;
-    const { patientId } = req.params;
+    const patientId = req.patientId; // Get patientId from req (set by previous middleware)
 
     // Additional check for Specialist role: ensure they are assigned to this patient if not an admin/staff
     if (req.user.role === 'Specialist' && req.user.user_id !== patientId) { // specialistId check is missing here for specialists to only view feedback for their patients
@@ -136,11 +140,18 @@ router.get('/patient/:patientId',
 router.get('/specialist/:specialistId',
   verifyToken,
   requireRole('Specialist', 'Administrator'),
-  validateSpecialistId,
+  (req, res, next) => { // Inline middleware to set req.specialistId from params
+    const specialistId = parseInt(req.params.specialistId);
+    if (!specialistId || isNaN(specialistId)) {
+      return res.status(400).json({ success: false, message: 'Valid specialistId in URL is required.' });
+    }
+    req.specialistId = specialistId;
+    next();
+  },
   enforceFeedbackOwnership, // Specialist can only view their own
   (req, res) => {
     const db = req.app.locals.db;
-    const { specialistId } = req.params;
+    const specialistId = req.specialistId; // Get specialistId from req (set by previous middleware)
 
     feedbackAPI.getFeedbackBySpecialist(db, specialistId, (err, results) => {
       if (err) {

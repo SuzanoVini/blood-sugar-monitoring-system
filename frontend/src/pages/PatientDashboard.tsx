@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom"; // Import Link
 import BloodSugarForm from "../components/BloodSugarForm";
 import ReadingsList from "../components/ReadingsList";
@@ -24,18 +24,35 @@ interface Reading {
 const PatientDashboard: React.FC = () => {
   const [signal, setSignal] = useState<number>(0);
   const [readingsForChart, setReadingsForChart] = useState<Reading[]>([]);
+  const [patientId, setPatientId] = useState<number | null>(null); // State for patientId
   const navigate = useNavigate();
 
-  // Get the current patient's ID
-  const currentUser = authService.getCurrentUser(); // Assumes authService has getCurrentUser()
-  const patientId = currentUser ? currentUser.user_id : null;
+  // Fetch patientId and initial data on mount
+  useEffect(() => {
+    const loadUserAndData = async () => {
+      try {
+        const user = await authService.getCurrentUser();
+        if (user && user.user_id) {
+          setPatientId(user.user_id);
+          // Initial data fetch can happen here after getting patientId
+          const data: Reading[] = await api.getReadings();
+          setReadingsForChart(data);
+        } else {
+          // Handle user not found or no ID
+          navigate("/login");
+        }
+      } catch (err) {
+        console.error("Error loading user data:", err);
+        navigate("/login");
+      }
+    };
+    loadUserAndData();
+  }, [navigate]); // Add navigate to dependency array
 
   const refreshAll = async () => {
-    console.log("Refreshing all data...");
     setSignal((s) => s + 1);
     try {
       const data: Reading[] = await api.getReadings();
-      console.log("Fetched readings:", data);
       setReadingsForChart(data);
     } catch (err) {
       console.error("Error refreshing:", err);

@@ -30,7 +30,7 @@ function timeBucket(datetime) {
 function analyzeAndCreateSuggestions(db, patientId, callback) {
   // 1. Fetch all readings for the patient
   const readingsQuery = `
-    SELECT Reading_ID, DateTime, Category, Food_Notes, Activity_Notes 
+    SELECT Reading_ID, DateTime, Category, Food_Notes, Activity_Notes, Event, Symptoms, Notes 
     FROM Sugar_Reading 
     WHERE Patient_ID = ? ORDER BY DateTime DESC
   `;
@@ -54,7 +54,13 @@ function analyzeAndCreateSuggestions(db, patientId, callback) {
     // 3. Perform pattern analysis (similar to frontend logic)
     const itemMap = {};
     abnormal.forEach(r => {
-      const items = [...splitAndNormalize(r.Food_Notes), ...splitAndNormalize(r.Activity_Notes)];
+      const items = [
+        ...splitAndNormalize(r.Food_Notes), 
+        ...splitAndNormalize(r.Activity_Notes),
+        ...splitAndNormalize(r.Event),
+        ...splitAndNormalize(r.Symptoms),
+        ...splitAndNormalize(r.Notes)
+      ];
       const bucket = timeBucket(r.DateTime);
       const readingId = r.Reading_ID;
 
@@ -89,7 +95,14 @@ function analyzeAndCreateSuggestions(db, patientId, callback) {
 
     // 5. Check for patterns and create suggestions
     let suggestionsCreated = 0;
-    Object.entries(itemMap).forEach(([item, data]) => {
+    const patternsToProcess = Object.entries(itemMap);
+    let patternsProcessed = 0;
+
+    if (patternsToProcess.length === 0) {
+      return callback(null, { status: 'completed', patterns_found: 0, suggestions_created: 0 });
+    }
+
+    patternsToProcess.forEach(([item, data]) => {
       const occurrences = data.count;
       const percent = occurrences / abnormal.length;
 
@@ -114,11 +127,18 @@ function analyzeAndCreateSuggestions(db, patientId, callback) {
             suggestionsCreated++;
             console.log(`AI suggestion created for patient ${patientId}. Suggestion ID: ${suggestionResult.insertId}`);
           }
+          patternsProcessed++;
+          if (patternsProcessed === patternsToProcess.length) {
+            callback(null, { status: 'completed', patterns_found: patternsToProcess.length, suggestions_created: suggestionsCreated });
+          }
         });
+      } else {
+        patternsProcessed++;
+        if (patternsProcessed === patternsToProcess.length) {
+          callback(null, { status: 'completed', patterns_found: patternsToProcess.length, suggestions_created: suggestionsCreated });
+        }
       }
     });
-    
-    callback(null, { status: 'completed', patterns_found: Object.keys(itemMap).length, suggestions_created: suggestionsCreated });
   });
 }
 

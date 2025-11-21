@@ -1,8 +1,4 @@
 import React, { useEffect, useState } from "react";
-import analyzePatterns, {
-  type Suggestion,
-  type AnalyzeResult,
-} from "../utils/aiAlgorithm";
 import api from "../services/apiService";
 
 interface AISuggestionsProps {
@@ -43,22 +39,22 @@ const AISuggestions: React.FC<AISuggestionsProps> = ({ refreshSignal }) => {
     setLoading(true);
     setError(null);
     try {
-      const readings = await api.getReadings();
-      const aiResult: AnalyzeResult = analyzePatterns(readings, {
-        minOccurrences: 3,
-        minPercent: 0.4,
-      });
+      const suggestionsFromApi = await api.getPatientSuggestions();
       setSuggestions(
-        aiResult.suggestions.map((s: Suggestion) => ({
-          trigger: s.trigger,
-          message: s.message,
-          percent: s.percent,
-        }))
+        suggestionsFromApi.map((s: any) => {
+          const match = s.based_on_pattern.match(/\((\d+)\/(\d+)\s+times\)/);
+          const percent = match ? (parseInt(match[1], 10) / parseInt(match[2], 10)) * 100 : 0;
+          return {
+            trigger: s.based_on_pattern,
+            message: s.content,
+            percent: percent,
+          };
+        })
       );
     } catch (err: any) {
       console.error(err);
       setSuggestions([]);
-      setError("We couldn't analyze your data right now.");
+      setError("We couldn't load your suggestions right now.");
     } finally {
       setLoading(false);
     }
@@ -67,7 +63,7 @@ const AISuggestions: React.FC<AISuggestionsProps> = ({ refreshSignal }) => {
   useEffect(() => {
     load();
   }, [refreshSignal]);
-
+  
   return (
     <section className="card ai-card" aria-busy={loading}>
       <div className="card-hd">
@@ -93,8 +89,24 @@ const AISuggestions: React.FC<AISuggestionsProps> = ({ refreshSignal }) => {
       </div>
 
       <div className="card-bd">
-        {/* keep your loading/empty/list markup here unchanged */}
-        ...
+        {loading && <p>Loading suggestions...</p>}
+        {error && <p className="text-error">{error}</p>}
+        {!loading && !error && suggestions.length === 0 && (
+          <p>No suggestions available at this time.</p>
+        )}
+        {!loading && !error && suggestions.length > 0 && (
+          <ul>
+            {suggestions.map((s, i) => (
+              <li key={i}>
+                <div className="ai-suggestion-content">
+                  <p>{s.message}</p>
+                  <small>{s.trigger}</small>
+                </div>
+                <Bar value={s.percent} />
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
     </section>
   );

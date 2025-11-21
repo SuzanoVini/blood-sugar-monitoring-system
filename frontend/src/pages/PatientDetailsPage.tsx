@@ -3,7 +3,7 @@
 // Purpose: A detailed view of a single patient for a specialist.
 
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import apiService from '../services/apiService';
 import authService from '../services/authService';
 
@@ -32,27 +32,32 @@ const PatientDetailsPage: React.FC = () => {
   const [signal, setSignal] = useState<number>(0);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  
-  const loggedInUser = authService.getCurrentUser(); // Assuming this gets the logged-in user's info
-  const specialistId = loggedInUser?.user_id;
+  const [specialistId, setSpecialistId] = useState<number | null>(null);
+  const navigate = useNavigate();
 
   const patientIdNum = Number(patientId);
 
   useEffect(() => {
-    if (!patientId) {
-      setError("No patient ID provided.");
-      setLoading(false);
-      return;
-    }
-
-    const loadPatientData = async () => {
+    const loadInitialData = async () => {
       setLoading(true);
       setError(null);
+      
       try {
-        // These API calls will need to be scoped to the patientId
-        // Assuming apiService can be updated to support this
+        // First, get the logged-in specialist's ID
+        const user = await authService.getCurrentUser();
+        if (user && user.user_id) {
+          setSpecialistId(user.user_id);
+        } else {
+          throw new Error("Could not identify the logged-in specialist.");
+        }
+
+        if (!patientId) {
+          throw new Error("No patient ID provided.");
+        }
+
+        // Now, fetch all patient data
         const [patientDetails, patientReadings] = await Promise.all([
-          apiService.get(`/specialist/patient/${patientId}`), // Endpoint to get patient details
+          apiService.get(`/specialist/patients/${patientId}`), // Corrected endpoint for a single patient's details
           apiService.get(`/patient/readings?patient_id=${patientId}`)
         ]);
 
@@ -69,14 +74,17 @@ const PatientDetailsPage: React.FC = () => {
         }
 
       } catch (err: any) {
-        setError(err.message || "An error occurred while fetching patient data.");
+        setError(err.message || "An error occurred while fetching data.");
+        if (err.message.includes("specialist")) {
+          navigate("/login"); // Redirect if specialist auth fails
+        }
       } finally {
         setLoading(false);
       }
     };
 
-    loadPatientData();
-  }, [patientId, signal]);
+    loadInitialData();
+  }, [patientId, signal, navigate]);
 
   const refreshData = () => setSignal(s => s + 1);
 
@@ -103,9 +111,15 @@ const PatientDetailsPage: React.FC = () => {
         <p>Email: {patient.email}</p>
       </div>
 
+      {specialistId && (
+        <div style={{ marginBottom: '2rem' }}>
+          <FeedbackForm patientId={patientIdNum} specialistId={specialistId} onFeedbackSubmitted={refreshData} />
+          <PatientFeedbackList patientId={patientIdNum} specialistId={specialistId} refreshSignal={signal} />
+        </div>
+      )}
+
       <div className="dashboard-grid">
         <div className="stack">
-          {specialistId && <FeedbackForm patientId={patientIdNum} specialistId={specialistId} onFeedbackSubmitted={refreshData} />}
           <AlertNotification />
           <AISuggestions refreshSignal={signal} />
         </div>

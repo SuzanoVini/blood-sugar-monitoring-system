@@ -76,6 +76,42 @@ router.get('/patients', attachSpecialistIdFromJWT, verifySpecialistMiddleware, (
 });
 
 /**
+ * GET /api/specialist/readings
+ * Get all readings for all patients assigned to the specialist, with filtering
+ */
+router.get('/readings', attachSpecialistIdFromJWT, verifySpecialistMiddleware, (req, res) => {
+  const db = req.app.locals.db;
+  const specialistId = req.specialistId;
+
+  const filters = {
+    startDate: req.query.startDate || null,
+    endDate: req.query.endDate || null,
+    category: req.query.category || null,
+    patientName: req.query.patientName || null
+  };
+
+  specialistAPI.getReadingsForSpecialist(db, specialistId, filters, (err, readings) => {
+    if (err) {
+      console.error('Error getting readings for specialist:', err);
+      return res.status(500).json({
+        success: false,
+        message: 'Error retrieving readings',
+        error: err.message
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Readings retrieved successfully',
+      data: {
+        readings: readings,
+        count: readings.length
+      }
+    });
+  });
+});
+
+/**
  * GET /api/specialist/patients/:id
  * Get detailed information about a specific patient
  * Params: id (patient_id)

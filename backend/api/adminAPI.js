@@ -1,4 +1,4 @@
-// ===============================================
+3// ===============================================
 // File: api/adminAPI.js
 // Author: Krish
 // Purpose: Provide admin-level functions for user management,
@@ -50,20 +50,49 @@ function getSystemStats(db, callback) {
   });
 }
 
-// 3️ Get patient list for report generation
-function getActivePatientsInPeriod(db, start_date, end_date, callback) {
-  const query = `
-    SELECT DISTINCT p.Patient_ID, u.Name
-    FROM Patient p
-    JOIN Sugar_Reading r ON p.Patient_ID = r.Patient_ID
-    JOIN User u ON p.Patient_ID = u.User_ID
-    WHERE r.DateTime BETWEEN ? AND ?
-    ORDER BY u.Name;
-  `;
-
-  db.query(query, [start_date, end_date], (err, results) => {
+// 3️ Get all active patients with their basic metadata
+function getAllActivePatientsMeta(db, callback) {
+      const query = `
+      SELECT
+        User_ID AS Patient_ID,
+        Name AS Patient_Name,
+        Email AS Patient_Email
+      FROM User
+      WHERE Role = 'Patient';
+    `;
+  db.query(query, (err, results) => {
     if (err) return callback(err);
-    callback(null, results); // Returns list of patients with readings in given range
+    callback(null, results); // Returns list of all active patients with their name and email
+  });
+}
+
+// Helper function to get reading trends for a single patient within a period
+function getPatientReadingTrendsForPeriod(db, patientId, start_date, end_date, callback) {
+  const query = `
+    SELECT
+      COALESCE(AVG(sr.Value), 0) AS Average_Reading,
+      COALESCE(MAX(sr.Value), 0) AS Highest_Reading,
+      COALESCE(MIN(sr.Value), 0) AS Lowest_Reading,
+      COUNT(sr.Reading_ID) AS Total_Readings
+    FROM Sugar_Reading sr
+    WHERE sr.Patient_ID = ? AND sr.DateTime BETWEEN ? AND ?;
+  `;
+  db.query(query, [patientId, start_date, end_date], (err, results) => {
+    if (err) return callback(err);
+    callback(null, results[0]); // Returns trend data for a single patient
+  });
+}
+
+// Helper function to get the total count of active patients
+function getTotalActivePatientsCount(db, callback) {
+  const query = `
+    SELECT COUNT(*) AS total_active_patients
+    FROM User
+    WHERE Role = 'Patient' AND Status = 'Active';
+  `;
+  db.query(query, (err, results) => {
+    if (err) return callback(err);
+    callback(null, results[0].total_active_patients);
   });
 }
 
@@ -308,7 +337,9 @@ function getReportById(db, reportId, callback) {
 module.exports = {
   getAllUsers,
   getSystemStats,
-  getActivePatientsInPeriod,
+  getAllActivePatientsMeta,
+  getPatientReadingTrendsForPeriod,
+  getTotalActivePatientsCount,
   saveReport,
   createSpecialist,
   createStaff,

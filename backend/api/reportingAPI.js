@@ -42,59 +42,152 @@ function getReports(db, callback) {
  * @param {Function} callback - Callback function(err, result)
  */
 function generateReport(db, adminId, periodType, periodStart, periodEnd, callback) {
-  // This is a complex operation that would involve multiple queries.
-  // For this implementation, we will perform a few sample aggregations.
-  
-  const summaryData = {};
-  let queriesCompleted = 0;
-  const totalQueries = 3; // The number of async queries we will run.
+  let activePatients = [];
+  let readingStats = {};
+  let patientReadingStats = [];
+  let aiInsights = {};
 
-  // 1. Get count of new patients in the period
-  const newPatientsQuery = `
-    SELECT COUNT(User_ID) AS new_patients_count
-    FROM User
-    WHERE Role = 'Patient' AND Created_At BETWEEN ? AND ?
+  let queriesCompleted = 0;
+  const totalQueries = 4; // We will run four main queries
+
+  // ... (existing queries for patients and reading stats)
+
+  // Query 4: Get AI insights for the period
+  const aiInsightsQuery = `
+    SELECT Food_Notes, Activity_Notes
+    FROM Sugar_Reading
+    WHERE Category = 'Abnormal' AND DateTime BETWEEN ? AND ?;
   `;
-  db.query(newPatientsQuery, [periodStart, periodEnd], (err, results) => {
+  db.query(aiInsightsQuery, [periodStart, periodEnd], (err, results) => {
     if (err) return callback(err);
-    summaryData.new_patients_count = results[0].new_patients_count;
+    
+    const triggerMap = {};
+    results.forEach(row => {
+      const triggers = [
+        ...(row.Food_Notes ? row.Food_Notes.split(',').map(s => s.trim().toLowerCase()) : []),
+        ...(row.Activity_Notes ? row.Activity_Notes.split(',').map(s => s.trim().toLowerCase()) : [])
+      ];
+      triggers.forEach(trigger => {
+        if (trigger) {
+          triggerMap[trigger] = (triggerMap[trigger] || 0) + 1;
+        }
+      });
+    });
+
+    // Get top 3 triggers
+    const topTriggers = Object.entries(triggerMap)
+      .sort(([, countA], [, countB]) => countB - countA)
+      .slice(0, 3)
+      .map(([trigger, count]) => ({ trigger, count }));
+
+    aiInsights = { topTriggers };
     checkCompletion();
   });
 
-  // 2. Get count of total blood sugar readings logged in the period
-  const totalReadingsQuery = `
-    SELECT COUNT(Reading_ID) AS total_readings_count
+  // Query 1: Get all patients
+  const patientsQuery = `
+    SELECT p.Patient_ID, u.Name, u.Email
+    FROM Patient p
+    JOIN User u ON p.Patient_ID = u.User_ID
+    ORDER BY u.Name;
+  `;
+  db.query(patientsQuery, (err, results) => {
+    if (err) return callback(err);
+    activePatients = results.map(p => ({
+      id: p.Patient_ID,
+      name: p.Name,
+      email: p.Email,
+      total_readings: 0,
+      average_reading: null,
+      highest_reading: null,
+      lowest_reading: null
+    }));
+    checkCompletion();
+  });
+
+  // Query 2: Get reading statistics for each patient in the period
+  const patientReadingsQuery = `
+    SELECT
+      Patient_ID,
+      COUNT(Reading_ID) AS total_readings,
+      AVG(Value) AS average_reading,
+      MAX(Value) AS highest_reading,
+      MIN(Value) AS lowest_reading
     FROM Sugar_Reading
     WHERE DateTime BETWEEN ? AND ?
+    GROUP BY Patient_ID;
   `;
-  db.query(totalReadingsQuery, [periodStart, periodEnd], (err, results) => {
+  db.query(patientReadingsQuery, [periodStart, periodEnd], (err, results) => {
     if (err) return callback(err);
-    summaryData.total_readings_count = results[0].total_readings_count;
+    patientReadingStats = results;
     checkCompletion();
   });
 
-  // 3. Get count of alerts generated in the period
-  const totalAlertsQuery = `
-    SELECT COUNT(Alert_ID) AS total_alerts_count
-    FROM Alert
-    WHERE Sent_At BETWEEN ? AND ?
+
+  // Query 3: Get overall reading statistics for the period
+  const readingsQuery = `
+    SELECT
+      COUNT(*) AS total_readings,
+      COUNT(DISTINCT Patient_ID) AS active_patients_count,
+      AVG(Value) AS avg_reading,
+      MIN(Value) AS min_reading,
+      MAX(Value) AS max_reading,
+      SUM(CASE WHEN Category = 'Normal' THEN 1 ELSE 0 END) AS normal_count,
+      SUM(CASE WHEN Category = 'Borderline' THEN 1 ELSE 0 END) AS borderline_count,
+      SUM(CASE WHEN Category = 'Abnormal' THEN 1 ELSE 0 END) AS abnormal_count
+    FROM Sugar_Reading
+    WHERE DateTime BETWEEN ? AND ?;
   `;
-  db.query(totalAlertsQuery, [periodStart, periodEnd], (err, results) => {
+  db.query(readingsQuery, [periodStart, periodEnd], (err, results) => {
     if (err) return callback(err);
-    summaryData.total_alerts_count = results[0].total_alerts_count;
+    readingStats = results[0];
     checkCompletion();
   });
-  
-  // This function checks if all queries are done before saving the report.
+
   function checkCompletion() {
     queriesCompleted++;
     if (queriesCompleted === totalQueries) {
-      saveReport();
+      // Merge patient reading stats into activePatients
+      patientReadingStats.forEach(stat => {
+        const patient = activePatients.find(p => p.id === stat.Patient_ID);
+        if (patient) {
+          patient.total_readings = stat.total_readings;
+          patient.average_reading = stat.average_reading;
+          patient.highest_reading = stat.highest_reading;
+          patient.lowest_reading = stat.lowest_reading;
+        }
+      });
+      buildAndSaveReport();
     }
   }
   
-  // This function saves the final aggregated data to the 'report' table.
-  function saveReport() {
+  function buildAndSaveReport() {
+    // Build the detailed summary data object
+    const summaryData = {
+      period: {
+        type: periodType,
+        start: periodStart,
+        end: periodEnd
+      },
+      patients: {
+        total_active: activePatients.length,
+        list: activePatients
+      },
+      readings: {
+        total: readingStats.total_readings,
+        average: readingStats.avg_reading ? parseFloat(readingStats.avg_reading).toFixed(2) : 0,
+        min: readingStats.min_reading,
+        max: readingStats.max_reading,
+        by_category: {
+          normal: readingStats.normal_count,
+          borderline: readingStats.borderline_count,
+          abnormal: readingStats.abnormal_count
+        }
+      },
+      aiInsights: aiInsights,
+      generated_at: new Date().toISOString()
+    };
+    
     const summaryDataJSON = JSON.stringify(summaryData);
 
     const insertQuery = `
@@ -114,7 +207,7 @@ function generateReport(db, adminId, periodType, periodStart, periodEnd, callbac
         period_type: periodType,
         summary_data: summaryData
       };
-      console.log(`New report (ID: ${results.insertId}) generated by Admin ${adminId}.`);
+      console.log(`New detailed report (ID: ${results.insertId}) generated by Admin ${adminId}.`);
       callback(null, newReport);
     });
   }

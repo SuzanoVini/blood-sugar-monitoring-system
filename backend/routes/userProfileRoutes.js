@@ -5,7 +5,20 @@
 const express = require('express');
 const router = express.Router();
 const userProfileAPI = require('../api/userProfileAPI');
-const { verifyToken } = require('../middleware/auth'); // Only verifyToken is needed as users manage their own profile
+const { verifyToken } = require('../middleware/auth');
+const multer = require('multer');
+const path = require('path');
+
+// Multer configuration for file uploads
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, 'uploads/');
+  },
+  filename: function (req, file, cb) {
+    cb(null, Date.now() + path.extname(file.originalname)); // Append extension
+  }
+});
+const upload = multer({ storage: storage });
 
 /**
  * GET /api/user/profile
@@ -34,10 +47,11 @@ router.get('/profile',
  * PUT /api/user/profile
  * Updates the profile of the authenticated user.
  * Accessible by any authenticated user.
- * Body: { "name": "New Name", "phone": "123-456-7890" }
+ * Body: { "name": "New Name", "phone": "123-456-7890", "profileImage": (file) }
  */
 router.put('/profile',
   verifyToken,
+  upload.single('profileImage'), // Apply multer middleware
   (req, res) => {
     const db = req.app.locals.db;
     const userId = req.user.user_id; // User ID from the authenticated token
@@ -55,6 +69,11 @@ router.put('/profile',
         return res.status(400).json({ success: false, message: 'Phone must be a non-empty string or null.' });
       }
       updateData.phone = phone === null ? null : phone.trim();
+    }
+    
+    // Handle profile image upload
+    if (req.file) {
+      updateData.profileImage = req.file.path.replace(/\\/g, '/'); // Normalize path
     }
 
     if (Object.keys(updateData).length === 0) {

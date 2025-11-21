@@ -23,6 +23,11 @@ function attachPatientIdFromJWT(req, res, next) {
 
 // Middleware to verify patient exists and is active
 function verifyPatientMiddleware(req, res, next) {
+  // If the user is not a patient, skip this patient-specific verification
+  if (req.user && req.user.role !== 'Patient') {
+    return next();
+  }
+
   const db = req.app.locals.db;
 
   patientAPI.verifyPatient(db, req.patientId, (err, result) => {
