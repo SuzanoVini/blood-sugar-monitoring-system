@@ -13,6 +13,7 @@ import AISuggestions from '../components/AISuggestions';
 import AlertNotification from '../components/AlertNotification';
 import TrendsChart from '../components/TrendsChart';
 import FeedbackForm from '../components/FeedbackForm';
+import PatientFeedbackList from '../components/PatientFeedbackList';
 
 // Interfaces
 interface Reading {

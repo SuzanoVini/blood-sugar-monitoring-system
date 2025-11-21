@@ -3,7 +3,8 @@
 // Purpose: A page for users to view and update their profile information.
 
 import React, { useState, useEffect, FormEvent } from 'react';
-import apiService from '../services/apiService'; 
+import { useNavigate } from 'react-router-dom';
+import apiService from '../services/apiService';
 import authService from '../services/authService';
 
 interface UserProfile {
@@ -14,6 +15,7 @@ interface UserProfile {
 }
 
 const ProfilePage: React.FC = () => {
+  const navigate = useNavigate();
   const [profile, setProfile] = useState<Partial<UserProfile>>({});
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
@@ -100,9 +102,28 @@ const ProfilePage: React.FC = () => {
     }
   };
 
-  const currentProfileImage = selectedFile 
-    ? URL.createObjectURL(selectedFile) 
+  const currentProfileImage = selectedFile
+    ? URL.createObjectURL(selectedFile)
     : (profile.profile_image ? `http://localhost:5000/${profile.profile_image}` : null);
+
+  const handleBack = () => {
+    // Navigate back to the appropriate dashboard based on user role
+    const currentUser = authService.getCurrentUser();
+    if (currentUser && currentUser.role) {
+      const normalizedRole = currentUser.role.toLowerCase().replace(/\s+/g, '_');
+      const roleRoutes: { [key: string]: string } = {
+        patient: '/dashboard',
+        specialist: '/specialist',
+        clinic_staff: '/staff',
+        administrator: '/admin',
+      };
+      const route = roleRoutes[normalizedRole] || '/dashboard';
+      navigate(route);
+    } else {
+      // Fallback to previous page
+      navigate(-1);
+    }
+  };
 
   if (loading && !profile.name) {
     return <div className="container"><p>Loading profile...</p></div>;
@@ -110,16 +131,32 @@ const ProfilePage: React.FC = () => {
 
   return (
     <div className="container">
-      {/* Header with Page Title */}
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          gap: '1rem',
-        }}
-      >
-        <h2 className="page-title">My Profile</h2>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '18px' }}>
+        <button
+          onClick={handleBack}
+          className="btn secondary"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            padding: '10px 16px'
+          }}
+        >
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M19 12H5M12 19l-7-7 7-7"/>
+          </svg>
+          Back
+        </button>
+        <h2 style={{ margin: 0 }}>My Profile</h2>
       </div>
 
       <div className="dashboard-grid">
@@ -134,20 +171,20 @@ const ProfilePage: React.FC = () => {
                   <label>Profile Image</label>
                   <div style={{ marginBottom: '10px' }}>
                     {currentProfileImage ? (
-                      <img 
-                        src={currentProfileImage} 
-                        alt="Profile" 
+                      <img
+                        src={currentProfileImage}
+                        alt="Profile"
                         style={{ width: '200px', height: '200px', objectFit: 'cover', display: 'block' }}
                       />
                     ) : (
-                      <div style={{ 
-                        width: '200px', 
-                        height: '200px', 
-                        backgroundColor: '#f0f0f0', 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        justifyContent: 'center', 
-                        color: '#aaa', 
+                      <div style={{
+                        width: '200px',
+                        height: '200px',
+                        backgroundColor: '#f0f0f0',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: '#aaa',
                         border: '1px solid #ccc',
                         marginBottom: '10px'
                       }}>
@@ -166,35 +203,35 @@ const ProfilePage: React.FC = () => {
 
                 <div className="form-group">
                   <label htmlFor="name">Name</label>
-                  <input 
-                    type="text" 
-                    id="name" 
-                    name="name" 
-                    value={profile.name || ''} 
-                    onChange={handleChange} 
-                    required 
+                  <input
+                    type="text"
+                    id="name"
+                    name="name"
+                    value={profile.name || ''}
+                    onChange={handleChange}
+                    required
                   />
                 </div>
 
                 <div className="form-group">
                   <label htmlFor="email">Email</label>
-                  <input 
-                    type="email" 
-                    id="email" 
-                    name="email" 
-                    value={profile.email || ''} 
+                  <input
+                    type="email"
+                    id="email"
+                    name="email"
+                    value={profile.email || ''}
                     disabled // Email is typically not user-editable
                   />
                 </div>
 
                 <div className="form-group">
                   <label htmlFor="phone">Phone Number</label>
-                  <input 
-                    type="tel" 
-                    id="phone" 
-                    name="phone" 
-                    value={profile.phone || ''} 
-                    onChange={handleChange} 
+                  <input
+                    type="tel"
+                    id="phone"
+                    name="phone"
+                    value={profile.phone || ''}
+                    onChange={handleChange}
                     placeholder="e.g., 555-123-4567"
                   />
                 </div>

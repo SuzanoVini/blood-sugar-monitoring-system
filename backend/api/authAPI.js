@@ -177,6 +177,44 @@ function getUserProfile(db, userId, callback) {
 }
 
 /**
+ * Create session record in SessionManager table
+ * @param {Object} db - Database connection
+ * @param {number} userId - User ID
+ * @param {Date} expiresAt - Session expiry time
+ * @param {Function} callback - Callback function(err, result)
+ */
+function createSession(db, userId, expiresAt, callback) {
+  const query = `
+    INSERT INTO SessionManager (Session_ID, User_ID, Login_Time, Expiry_Time)
+    VALUES (UUID(), ?, NOW(), ?)
+  `;
+
+  db.query(query, [userId, expiresAt], (err, result) => {
+    if (err) return callback(err, null);
+    callback(null, { success: true, session_id: result.insertId });
+  });
+}
+
+/**
+ * Destroy session by setting expiry time to now
+ * @param {Object} db - Database connection
+ * @param {number} userId - User ID
+ * @param {Function} callback - Callback function(err, result)
+ */
+function destroySession(db, userId, callback) {
+  const query = `
+    UPDATE SessionManager
+    SET Expiry_Time = NOW()
+    WHERE User_ID = ? AND (Expiry_Time IS NULL OR Expiry_Time > NOW())
+  `;
+
+  db.query(query, [userId], (err, result) => {
+    if (err) return callback(err, null);
+    callback(null, { success: true, rows_affected: result.affectedRows });
+  });
+}
+
+/**
  * Logout user (stateless endpoint)
  * @param {Object} db - Database connection
  * @param {number} userId - User ID (for logging purposes)
@@ -272,5 +310,7 @@ module.exports = {
   getUserProfile,
   logoutUser,
   forgotPassword,
-  resetPassword
+  resetPassword,
+  createSession,
+  destroySession
 };

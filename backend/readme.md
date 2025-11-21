@@ -31,6 +31,8 @@ PORT=5000
 NODE_ENV=development
 JWT_SECRET=<generate_secure_random_64_character_hex_string>
 JWT_EXPIRES_IN=1h
+SENDGRID_API_KEY=<your_sendgrid_api_key>
+SENDGRID_SENDER_EMAIL=<verified_sender_email>
 ```
 
 Adjust these values to match your local MySQL configuration.
@@ -120,12 +122,14 @@ backend/
 │   ├── adminAPI.js             # Administrator operations
 │   ├── thresholdAPI.js         # Threshold system
 │   └── alertAPI.js             # Alert generation
-└── /routes                     # Express route handlers
-    ├── authRoutes.js
-    ├── patientRoutes.js
-    ├── specialistRoutes.js
-    ├── adminRoutes.js
-    └── staffRoutes.js
+├── /routes                     # Express route handlers
+│   ├── authRoutes.js
+│   ├── patientRoutes.js
+│   ├── specialistRoutes.js
+│   ├── adminRoutes.js
+│   └── staffRoutes.js
+└── /services                   # External service integrations
+    └── emailService.js         # SendGrid email notifications
 ```
 
 ## Troubleshooting

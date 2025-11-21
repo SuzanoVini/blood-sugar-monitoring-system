@@ -325,17 +325,17 @@ CREATE TABLE `user` (
 --
 
 INSERT INTO `user` (`User_ID`, `Name`, `Email`, `Password_Hash`, `Phone`, `Profile_Image`, `Created_At`, `Status`, `Role`) VALUES
-(1, 'Alice Wong', 'alice@gmail.com', 'hash1', '6041112222', 'alice.jpg', '2025-10-16 19:21:44', 'Active', 'Patient'),
-(2, 'Ben Singh', 'ben@gmail.com', 'hash2', '6042223333', 'ben.jpg', '2025-10-16 19:21:44', 'Active', 'Patient'),
-(3, 'Clara Diaz', 'clara@gmail.com', 'hash3', '6043334444', 'clara.jpg', '2025-10-16 19:21:44', 'Active', 'Patient'),
-(4, 'David Patel', 'david@gmail.com', 'hash4', '6044445555', 'david.jpg', '2025-10-16 19:21:44', 'Active', 'Patient'),
-(5, 'Emma Johnson', 'emma@gmail.com', 'hash5', '6045556666', 'emma.jpg', '2025-10-16 19:21:44', 'Active', 'Patient'),
-(6, 'Dr. Liam Brown', 'liam.brown@clinic.ca', 'hash6', '6046667777', 'liam.jpg', '2025-10-16 19:21:44', 'Active', 'Specialist'),
-(7, 'Dr. Olivia Stone', 'olivia.stone@clinic.ca', 'hash7', '6047778888', 'olivia.jpg', '2025-10-16 19:21:44', 'Active', 'Specialist'),
-(8, 'Dr. Noah Khan', 'noah.khan@clinic.ca', 'hash8', '6048889999', 'noah.jpg', '2025-10-16 19:21:44', 'Active', 'Specialist'),
-(9, 'Sophia Lee', 'sophia.lee@clinic.ca', 'hash9', '6049990000', 'sophia.jpg', '2025-10-16 19:21:44', 'Active', 'Clinic_Staff'),
-(10, 'Mason Clark', 'mason.clark@clinic.ca', 'hash10', '6041234567', 'mason.jpg', '2025-10-16 19:21:44', 'Active', 'Clinic_Staff'),
-(11, 'Ava Roberts', 'ava.roberts@clinic.ca', 'hash11', '6049876543', 'ava.jpg', '2025-10-16 19:21:44', 'Active', 'Administrator');
+(1, 'Alice Wong', 'alice@gmail.com', '$2b$10$h3rT7aMJZBvDk65gFdFydORtX6MgV5j.gFTUVYUrlBlC9s3RZ0jUy', '6041112222', 'alice.jpg', '2025-10-16 19:21:44', 'Active', 'Patient'),
+(2, 'Ben Singh', 'ben@gmail.com', '$2b$10$h3rT7aMJZBvDk65gFdFydORtX6MgV5j.gFTUVYUrlBlC9s3RZ0jUy', '6042223333', 'ben.jpg', '2025-10-16 19:21:44', 'Active', 'Patient'),
+(3, 'Clara Diaz', 'clara@gmail.com', '$2b$10$h3rT7aMJZBvDk65gFdFydORtX6MgV5j.gFTUVYUrlBlC9s3RZ0jUy', '6043334444', 'clara.jpg', '2025-10-16 19:21:44', 'Active', 'Patient'),
+(4, 'David Patel', 'david@gmail.com', '$2b$10$h3rT7aMJZBvDk65gFdFydORtX6MgV5j.gFTUVYUrlBlC9s3RZ0jUy', '6044445555', 'david.jpg', '2025-10-16 19:21:44', 'Active', 'Patient'),
+(5, 'Emma Johnson', 'emma@gmail.com', '$2b$10$h3rT7aMJZBvDk65gFdFydORtX6MgV5j.gFTUVYUrlBlC9s3RZ0jUy', '6045556666', 'emma.jpg', '2025-10-16 19:21:44', 'Active', 'Patient'),
+(6, 'Dr. Liam Brown', 'liam.brown@clinic.ca', '$2b$10$h3rT7aMJZBvDk65gFdFydORtX6MgV5j.gFTUVYUrlBlC9s3RZ0jUy', '6046667777', 'liam.jpg', '2025-10-16 19:21:44', 'Active', 'Specialist'),
+(7, 'Dr. Olivia Stone', 'olivia.stone@clinic.ca', '$2b$10$h3rT7aMJZBvDk65gFdFydORtX6MgV5j.gFTUVYUrlBlC9s3RZ0jUy', '6047778888', 'olivia.jpg', '2025-10-16 19:21:44', 'Active', 'Specialist'),
+(8, 'Dr. Noah Khan', 'noah.khan@clinic.ca', '$2b$10$h3rT7aMJZBvDk65gFdFydORtX6MgV5j.gFTUVYUrlBlC9s3RZ0jUy', '6048889999', 'noah.jpg', '2025-10-16 19:21:44', 'Active', 'Specialist'),
+(9, 'Sophia Lee', 'sophia.lee@clinic.ca', '$2b$10$h3rT7aMJZBvDk65gFdFydORtX6MgV5j.gFTUVYUrlBlC9s3RZ0jUy', '6049990000', 'sophia.jpg', '2025-10-16 19:21:44', 'Active', 'Clinic_Staff'),
+(10, 'Mason Clark', 'mason.clark@clinic.ca', '$2b$10$h3rT7aMJZBvDk65gFdFydORtX6MgV5j.gFTUVYUrlBlC9s3RZ0jUy', '6041234567', 'mason.jpg', '2025-10-16 19:21:44', 'Active', 'Clinic_Staff'),
+(11, 'Ava Roberts', 'ava.roberts@clinic.ca', '$2b$10$h3rT7aMJZBvDk65gFdFydORtX6MgV5j.gFTUVYUrlBlC9s3RZ0jUy', '6049876543', 'ava.jpg', '2025-10-16 19:21:44', 'Active', 'Administrator');
 
 --
 -- Indexes for dumped tables

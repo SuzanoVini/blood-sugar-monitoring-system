@@ -37,9 +37,15 @@ const StaffDashboard: React.FC = () => {
   });
   const [saving, setSaving] = useState<boolean>(false);
   const [patients, setPatients] = useState<Patient[]>([]);
-  const [loadingPatients, setLoadingPatients] = useState(true);
-  const [patientNameFilter, setPatientNameFilter] = useState("");
-  const [healthcareNumberFilter, setHealthcareNumberFilter] = useState("");
+  const [loadingPatients, setLoadingPatients] = useState(true); // From HEAD
+  const [patientNameFilter, setPatientNameFilter] = useState(""); // From HEAD
+  const [healthcareNumberFilter, setHealthcareNumberFilter] = useState(""); // From HEAD
+
+  // Remote's pagination state variables - Keeping them for now, but not actively used with HEAD's patient loading strategy
+  const [offset, setOffset] = useState<number>(0);
+  const [loadingPagedPatients, setLoadingPagedPatients] = useState<boolean>(false); // Renamed to avoid clash
+  const limit = 20;
+
 
   const navigate = useNavigate();
 
@@ -55,7 +61,7 @@ const StaffDashboard: React.FC = () => {
   const loadPatients = async () => {
     setLoadingPatients(true);
     try {
-      const res: Patient[] = await api.getStaffPatients();
+      const res: Patient[] = await api.getStaffPatients(); // Using HEAD's getStaffPatients (all patients)
       setPatients(res);
     } catch (err) {
       console.error("Failed to load patients for staff:", err);
@@ -69,7 +75,25 @@ const StaffDashboard: React.FC = () => {
     loadPatients();
   }, []);
 
-  const handleSaveThresholds = async () => {
+  // Remote's useEffect for pagination - Not actively used with HEAD's loadPatients, but keeping its structure
+  useEffect(() => {
+    const loadPagedPatients = async () => { // Renamed to avoid clash
+      setLoadingPagedPatients(true);
+      try {
+        // This would call an API endpoint that supports pagination
+        // For now, it will not be used, but keeping the structure
+        // const res = await api.getStaffPatients(limit, offset);
+        // setPatients(res);
+      } catch (err) {
+        console.error("Failed to load paged patients:", err);
+      } finally {
+        setLoadingPagedPatients(false);
+      }
+    };
+    // loadPagedPatients(); // Commented out as HEAD's loadPatients loads all
+  }, [offset]);
+
+  const handleSaveThresholds = async () => { // From HEAD
     setSaving(true);
     try {
       await api.updateCategoryThreshold(thresholds);
@@ -81,6 +105,7 @@ const StaffDashboard: React.FC = () => {
       setSaving(false);
     }
   };
+
 
   const handleLogout = async () => {
     try {
@@ -97,6 +122,18 @@ const StaffDashboard: React.FC = () => {
     return matchesName && matchesHealthcareNumber;
   });
 
+  // Remote's pagination handlers - Not actively used with HEAD's loadPatients, but keeping for reference
+  const handlePrevPage = () => {
+    if (offset > 0) {
+      setOffset(offset - limit);
+    }
+  };
+
+  const handleNextPage = () => {
+    if (patients.length === limit) {
+      setOffset(offset + limit);
+    }
+  };
 
   return (
     <div className="container">
