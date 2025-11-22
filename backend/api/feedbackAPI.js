@@ -1,5 +1,4 @@
 // api/feedbackAPI.js
-// Author: Gemini
 // Purpose: API functions for managing feedback between specialists and patients
 
 /**

@@ -1,5 +1,4 @@
 // api/userProfileAPI.js
-// Author: Gemini
 // Purpose: API functions for managing user profile information.
 
 /**

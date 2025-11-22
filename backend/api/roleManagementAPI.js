@@ -1,5 +1,4 @@
 // api/roleManagementAPI.js
-// Author: Gemini
 // Purpose: API functions for managing user roles, primarily for administrators.
 
 /**

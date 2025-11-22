@@ -1,5 +1,4 @@
 // backend/socketManager.js
-// Author: Gemini
 // Purpose: Manages WebSocket connections for real-time notifications using Socket.IO.
 
 const socketIo = require('socket.io');

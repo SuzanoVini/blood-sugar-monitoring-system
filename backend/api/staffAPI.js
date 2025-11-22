@@ -1,5 +1,4 @@
 // api/staffAPI.js
-// Author: Gemini
 // Purpose: API functions for clinic staff operations related to patient data.
 
 /**

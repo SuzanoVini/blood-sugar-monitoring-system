@@ -1,5 +1,4 @@
 // api/aiProcessingAPI.js
-// Author: Gemini
 // Purpose: Handles the server-side AI pattern analysis of blood sugar readings.
 
 function splitAndNormalize(text) {

@@ -1,5 +1,4 @@
 // api/reportingAPI.js
-// Author: Gemini
 // Purpose: API functions for generating and managing system-wide reports for administrators.
 
 /**
