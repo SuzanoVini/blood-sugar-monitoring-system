@@ -186,6 +186,53 @@ router.put('/thresholds', verifyToken, requireRole('Clinic_Staff', 'Administrato
 });
 
 /**
+ * DELETE /api/staff/thresholds
+ * Delete a threshold by ID or latest if no ID provided
+ * Accessible by Clinic_Staff and Administrator roles.
+ * Query parameter: id (optional) - Threshold_ID to delete
+ * Response: { success, message, data: { threshold_id, deleted } }
+ */
+router.delete('/thresholds', verifyToken, requireRole('Clinic_Staff', 'Administrator'), (req, res) => {
+  const db = req.app.locals.db;
+  const thresholdId = req.query.id ? parseInt(req.query.id) : null;
+
+  // Validate ID if provided
+  if (req.query.id && (isNaN(thresholdId) || thresholdId <= 0)) {
+    return res.status(400).json({
+      success: false,
+      message: 'Invalid threshold ID'
+    });
+  }
+
+  thresholdAPI.deleteThreshold(db, thresholdId, (err, result) => {
+    if (err) {
+      console.error('Error deleting threshold:', err);
+
+      if (err.message.includes('not found')) {
+        return res.status(404).json({
+          success: false,
+          message: err.message
+        });
+      }
+
+      return res.status(500).json({
+        success: false,
+        message: 'Error deleting threshold',
+        error: err.message
+      });
+    }
+
+    console.log(`Threshold deleted by user ${req.user.user_id}, Threshold_ID: ${result.threshold_id}`);
+
+    res.status(200).json({
+      success: true,
+      message: 'Threshold deleted successfully',
+      data: result
+    });
+  });
+});
+
+/**
  * GET /api/staff/patients
  * Get read-only list of all patients
  * Accessible by Clinic_Staff and Administrator roles.

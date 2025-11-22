@@ -165,10 +165,49 @@ function getEffectiveThresholds(db, patient_id, callback) {
   });
 }
 
+// Delete a threshold by ID, or latest if no ID provided
+function deleteThreshold(db, thresholdId, callback) {
+  if (thresholdId) {
+    // Delete specific threshold by ID
+    const query = 'DELETE FROM categorythreshold WHERE Threshold_ID = ?';
+    db.query(query, [thresholdId], (err, results) => {
+      if (err) return callback(err, null);
+      if (results.affectedRows === 0) {
+        return callback(new Error('Threshold not found'), null);
+      }
+      callback(null, { success: true, threshold_id: thresholdId, deleted: true });
+    });
+  } else {
+    // Delete latest threshold
+    const getLatestQuery = `
+      SELECT Threshold_ID
+      FROM categorythreshold
+      ORDER BY Effective_Date DESC
+      LIMIT 1
+    `;
+
+    db.query(getLatestQuery, (err, results) => {
+      if (err) return callback(err, null);
+      if (results.length === 0) {
+        return callback(new Error('No thresholds found to delete'), null);
+      }
+
+      const latestId = results[0].Threshold_ID;
+      const deleteQuery = 'DELETE FROM categorythreshold WHERE Threshold_ID = ?';
+
+      db.query(deleteQuery, [latestId], (err, deleteResults) => {
+        if (err) return callback(err, null);
+        callback(null, { success: true, threshold_id: latestId, deleted: true });
+      });
+    });
+  }
+}
+
 module.exports = {
   getSystemThresholds,
   updateSystemThresholds,
   categorizeReading,
   updatePatientThresholds,
-  getEffectiveThresholds
+  getEffectiveThresholds,
+  deleteThreshold
 };
