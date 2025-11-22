@@ -6,7 +6,6 @@
 const thresholdAPI = require('./thresholdAPI');
 const aiProcessingAPI = require('./aiProcessingAPI'); // Import the AI processing module
 const alertAPI = require('../api/alertAPI'); // Import the Alert processing module
-const alertSystem = require('../alertSystem');
 
 /**
  * Get blood sugar readings for a patient with optional filtering and pagination
@@ -175,7 +174,7 @@ function addReading(db, patientId, readingData, callback) {
       };
 
       console.log(`New reading added - ID: ${newReading.reading_id}, Patient: ${patientId}, Category: ${category}`);
-      
+
       // If the new reading is abnormal, trigger background processing tasks.
       if (category === 'Abnormal') {
         // Trigger AI analysis
@@ -187,10 +186,16 @@ function addReading(db, patientId, readingData, callback) {
             console.log(`addReading: AI background processing completed for patient ${patientId}:`, aiResult);
           }
         });
-        
-        // Check for abnormal readings count and send real-time alert
+
+        // Check for abnormal readings count and trigger alerts (email + DB record + Socket.IO)
         console.log(`addReading: Abnormal reading detected. Triggering alert system for patient ${patientId}...`);
-        alertSystem.checkAbnormalReadings(db, patientId);
+        alertAPI.checkAndTriggerAlerts(db, patientId, (alertErr, alertResult) => {
+          if (alertErr) {
+            console.error(`addReading: Alert processing failed for patient ${patientId}:`, alertErr);
+          } else {
+            console.log(`addReading: Alert processing completed for patient ${patientId}:`, alertResult);
+          }
+        });
       }
 
       callback(null, newReading);

@@ -329,5 +329,8 @@ module.exports = {
   getAlertsByPatient,
   checkAllPatientsForAlerts,
   logAlertNotification,
-  checkAndTriggerAlerts // Added new function to exports
+  checkAndTriggerAlerts,
+  getUndeliveredAlertsForSpecialist,
+  markAlertAsDeliveredToSpecialist,
+  getPatientSpecialist
 };
