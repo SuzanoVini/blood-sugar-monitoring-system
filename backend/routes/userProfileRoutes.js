@@ -45,9 +45,12 @@ router.get('/profile',
 
 /**
  * PUT /api/user/profile
- * Updates the profile of the authenticated user.
+ * Updates the profile of the authenticated user including role-specific fields.
  * Accessible by any authenticated user.
- * Body: { "name": "New Name", "phone": "123-456-7890", "profileImage": (file) }
+ * Body: { "name": "New Name", "phone": "123-456-7890", "profileImage": (file),
+ *         Patient: "healthcareNumber", "dateOfBirth",
+ *         Specialist: "workingId", "specialization",
+ *         Clinic_Staff: "workingId", "department" }
  */
 router.put('/profile',
   verifyToken,
@@ -55,9 +58,12 @@ router.put('/profile',
   (req, res) => {
     const db = req.app.locals.db;
     const userId = req.user.user_id; // User ID from the authenticated token
-    const { name, phone } = req.body;
+    const userRole = req.user.role; // User role from the authenticated token
+    const { name, phone, healthcareNumber, dateOfBirth, workingId, specialization, department } = req.body;
 
     const updateData = {};
+
+    // Validate and add common fields
     if (name !== undefined) {
       if (typeof name !== 'string' || name.trim().length === 0) {
         return res.status(400).json({ success: false, message: 'Name must be a non-empty string.' });
@@ -70,17 +76,61 @@ router.put('/profile',
       }
       updateData.phone = phone === null ? null : phone.trim();
     }
-    
+
     // Handle profile image upload
     if (req.file) {
       updateData.profileImage = req.file.path.replace(/\\/g, '/'); // Normalize path
+    }
+
+    // Add role-specific fields
+    if (userRole === 'Patient') {
+      if (healthcareNumber !== undefined) {
+        if (typeof healthcareNumber !== 'string' || healthcareNumber.trim().length === 0) {
+          return res.status(400).json({ success: false, message: 'Healthcare number must be a non-empty string.' });
+        }
+        updateData.healthcareNumber = healthcareNumber.trim();
+      }
+      if (dateOfBirth !== undefined) {
+        // Validate date format (YYYY-MM-DD)
+        const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+        if (!dateRegex.test(dateOfBirth)) {
+          return res.status(400).json({ success: false, message: 'Date of birth must be in YYYY-MM-DD format.' });
+        }
+        updateData.dateOfBirth = dateOfBirth;
+      }
+    } else if (userRole === 'Specialist') {
+      if (workingId !== undefined) {
+        if (typeof workingId !== 'string' || workingId.trim().length === 0) {
+          return res.status(400).json({ success: false, message: 'Working ID must be a non-empty string.' });
+        }
+        updateData.workingId = workingId.trim();
+      }
+      if (specialization !== undefined) {
+        if (typeof specialization !== 'string' || specialization.trim().length === 0) {
+          return res.status(400).json({ success: false, message: 'Specialization must be a non-empty string.' });
+        }
+        updateData.specialization = specialization.trim();
+      }
+    } else if (userRole === 'Clinic_Staff') {
+      if (workingId !== undefined) {
+        if (typeof workingId !== 'string' || workingId.trim().length === 0) {
+          return res.status(400).json({ success: false, message: 'Working ID must be a non-empty string.' });
+        }
+        updateData.workingId = workingId.trim();
+      }
+      if (department !== undefined) {
+        if (typeof department !== 'string' || department.trim().length === 0) {
+          return res.status(400).json({ success: false, message: 'Department must be a non-empty string.' });
+        }
+        updateData.department = department.trim();
+      }
     }
 
     if (Object.keys(updateData).length === 0) {
       return res.status(400).json({ success: false, message: 'No valid fields provided for update.' });
     }
 
-    userProfileAPI.updateUserProfile(db, userId, updateData, (err, result) => {
+    userProfileAPI.updateUserProfile(db, userId, userRole, updateData, (err, result) => {
       if (err) {
         return res.status(500).json({ success: false, message: 'Error updating user profile', error: err.message });
       }
