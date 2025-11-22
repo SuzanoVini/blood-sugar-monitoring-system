@@ -107,6 +107,9 @@ const ResetPassword: React.FC = () => {
         >
           {loading ? "Resetting..." : "Reset Password"}
         </button>
+        <div style={{ marginTop: 16 }}>
+          <a href="/login">Back to Login</a>
+        </div>
       </div>
     </div>
   );

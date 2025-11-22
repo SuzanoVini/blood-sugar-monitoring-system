@@ -173,6 +173,9 @@ const Register: React.FC = () => {
         >
           {loading ? "Registering..." : "Register"}
         </button>
+        <div style={{ marginTop: 16 }}>
+          <a href="/login">Back to Login</a>
+        </div>
       </div>
     </div>
   );

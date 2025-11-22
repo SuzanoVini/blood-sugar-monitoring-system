@@ -27,18 +27,18 @@ const upload = multer({ storage: storage });
 /**
  * POST /api/auth/register
  * Register new patient account
- * Body: name, email, password, healthcareNumber, dateOfBirth, phone (optional), profileImage (optional file)
+ * Body: name, email, password, healthcareNumber, dateOfBirth, phone, profileImage (optional file)
  */
 router.post('/register', upload.single('profileImage'), (req, res) => {
   const db = req.app.locals.db;
 
   // Validate required fields
-  const { name, email, password, healthcareNumber, dateOfBirth } = req.body;
+  const { name, email, password, healthcareNumber, dateOfBirth, phone } = req.body;
 
-  if (!name || !email || !password || !healthcareNumber || !dateOfBirth) {
+  if (!name || !email || !password || !healthcareNumber || !dateOfBirth || !phone) {
     return res.status(400).json({
       success: false,
-      message: 'Missing required fields: name, email, password, healthcareNumber, dateOfBirth'
+      message: 'Missing required fields: name, email, password, healthcareNumber, dateOfBirth, phone'
     });
   }
 
@@ -72,7 +72,7 @@ router.post('/register', upload.single('profileImage'), (req, res) => {
     name: name.trim(),
     email: email.trim().toLowerCase(),
     password: password,
-    phone: req.body.phone || null,
+    phone: phone.trim(),
     healthcareNumber: healthcareNumber.trim(),
     dateOfBirth: dateOfBirth,
     profileImage: req.file ? req.file.path.replace(/\\/g, "/") : null
