@@ -129,15 +129,16 @@ function createSpecialist(db, userData, callback) {
 
     // Step 1: Insert into User table
     const userQuery = `
-      INSERT INTO User (Name, Email, Password_Hash, Phone, Role, Status)
-      VALUES (?, ?, ?, ?, 'Specialist', 'Active');
+      INSERT INTO User (Name, Email, Password_Hash, Phone, Role, Status, Profile_Image)
+      VALUES (?, ?, ?, ?, 'Specialist', 'Active', ?);
     `;
 
     const userValues = [
       userData.name,
       userData.email,
       passwordHash,
-      userData.phone || null
+      userData.phone || null,
+      userData.profileImage || null
     ];
 
     db.query(userQuery, userValues, (err, userResult) => {
@@ -201,15 +202,16 @@ function createStaff(db, userData, callback) {
 
     // Step 1: Insert into User table
     const userQuery = `
-      INSERT INTO User (Name, Email, Password_Hash, Phone, Role, Status)
-      VALUES (?, ?, ?, ?, 'Clinic_Staff', 'Active');
+      INSERT INTO User (Name, Email, Password_Hash, Phone, Role, Status, Profile_Image)
+      VALUES (?, ?, ?, ?, 'Clinic_Staff', 'Active', ?);
     `;
 
     const userValues = [
       userData.name,
       userData.email,
       passwordHash,
-      userData.phone || null
+      userData.phone || null,
+      userData.profileImage || null
     ];
 
     db.query(userQuery, userValues, (err, userResult) => {

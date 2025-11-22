@@ -7,6 +7,19 @@ const express = require('express');
 const router = express.Router();
 const adminAPI = require('../api/adminAPI');
 const { verifyToken, requireRole } = require('../middleware/auth'); // Import auth middleware
+const multer = require('multer');
+const path = require('path');
+
+// Multer configuration for file uploads
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, 'uploads/');
+  },
+  filename: function (req, file, cb) {
+    cb(null, Date.now() + path.extname(file.originalname)); // Append extension
+  }
+});
+const upload = multer({ storage: storage });
 
 // Middleware to validate admin_id from request - REMOVED
 
@@ -39,11 +52,11 @@ router.get('/users', verifyToken, requireRole('Administrator'), (req, res) => {
 /**
  * POST /api/admin/users/specialist
  * Create new specialist account
- * Body: name, email, password, workingId, specialization, phone (optional)
+ * Body: name, email, password, workingId, specialization, phone (optional), profileImage (optional file)
  * Accessible only by Administrators.
  * Response: { success, message, data }
  */
-router.post('/users/specialist', verifyToken, requireRole('Administrator'), (req, res) => {
+router.post('/users/specialist', upload.single('profileImage'), verifyToken, requireRole('Administrator'), (req, res) => {
   const db = req.app.locals.db;
 
   // Validate required fields
@@ -79,7 +92,8 @@ router.post('/users/specialist', verifyToken, requireRole('Administrator'), (req
     password: password,
     workingId: workingId.trim(),
     specialization: specialization.trim(),
-    phone: req.body.phone || null
+    phone: req.body.phone || null,
+    profileImage: req.file ? req.file.path.replace(/\\/g, "/") : null
   };
 
   adminAPI.createSpecialist(db, userData, (err, result) => {
@@ -110,11 +124,11 @@ router.post('/users/specialist', verifyToken, requireRole('Administrator'), (req
 /**
  * POST /api/admin/users/staff
  * Create new clinic staff account
- * Body: name, email, password, workingId, department, phone (optional)
+ * Body: name, email, password, workingId, department, phone (optional), profileImage (optional file)
  * Accessible only by Administrators.
  * Response: { success, message, data }
  */
-router.post('/users/staff', verifyToken, requireRole('Administrator'), (req, res) => {
+router.post('/users/staff', upload.single('profileImage'), verifyToken, requireRole('Administrator'), (req, res) => {
   const db = req.app.locals.db;
 
   // Validate required fields
@@ -150,7 +164,8 @@ router.post('/users/staff', verifyToken, requireRole('Administrator'), (req, res
     password: password,
     workingId: workingId.trim(),
     department: department.trim(),
-    phone: req.body.phone || null
+    phone: req.body.phone || null,
+    profileImage: req.file ? req.file.path.replace(/\\/g, "/") : null
   };
 
   adminAPI.createStaff(db, userData, (err, result) => {
