@@ -54,7 +54,7 @@ function createAlert(db, patientId, abnormalCount, specialistId, callback) {
   weekStart.setHours(0, 0, 0, 0); // Set to the beginning of the day
 
   console.log('createAlert: Calculated weekStart:', weekStart);
-  
+
   const recipients = `Patient ${patientId}, Specialist ${specialistId}`;
 
   const query = `
@@ -78,42 +78,140 @@ function createAlert(db, patientId, abnormalCount, specialistId, callback) {
 
     console.log(`Alert created - ID: ${alertData.alert_id}, Patient: ${patientId}`);
 
-    // Fetch email addresses for patient and specialist
-    const userIds = [patientId];
-    if (specialistId) {
-      userIds.push(specialistId);
-    }
-
-    const emailQuery = `SELECT Email FROM User WHERE User_ID IN (?) AND Status = 'Active'`;
-    db.query(emailQuery, [userIds], (emailErr, emailResults) => {
-      if (emailErr || !emailResults || emailResults.length === 0) {
-        console.warn(`Could not fetch emails for alert ${alertData.alert_id}: ${emailErr ? emailErr.message : 'No active users found'}`);
+    // Fetch patient name and email
+    const patientQuery = `SELECT Name, Email FROM User WHERE User_ID = ? AND Status = 'Active'`;
+    db.query(patientQuery, [patientId], (patientErr, patientResults) => {
+      if (patientErr || !patientResults || patientResults.length === 0) {
+        console.warn(`Could not fetch patient data for alert ${alertData.alert_id}: ${patientErr ? patientErr.message : 'Patient not found'}`);
         return callback(null, alertData);
       }
 
-      const emailAddresses = emailResults.map(row => row.Email);
+      const patientName = patientResults[0].Name;
+      const patientEmail = patientResults[0].Email;
 
-      // Compose email
-      const subject = 'Critical Blood Sugar Alert';
-      const html = `
-        <html>
-          <body style="font-family: Arial, sans-serif; color: #333;">
-            <h2 style="color: #d9534f;">Critical Blood Sugar Alert</h2>
-            <p>Patient ID <strong>${patientId}</strong> has logged <strong>${abnormalCount}</strong> abnormal blood sugar readings in the past 7 days.</p>
-            <p>Please review the patient's readings and take appropriate action.</p>
-          </body>
-        </html>
+      // Fetch abnormal readings for the past 7 days
+      const readingsQuery = `
+        SELECT Reading_ID, DateTime, Value, Unit, Category, Food_Notes, Activity_Notes, Symptoms
+        FROM Sugar_Reading
+        WHERE Patient_ID = ? AND Category = 'Abnormal' AND DateTime >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+        ORDER BY DateTime DESC
       `;
 
-      // Send email via emailService
-      emailService.sendAlertEmail(emailAddresses, subject, html, (sendErr, sendResult) => {
-        if (sendErr) {
-          console.warn(`Email send failed for alert ${alertData.alert_id}: ${sendErr.message}`);
-        } else {
-          console.log(`Alert email sent successfully for alert ${alertData.alert_id} to ${emailAddresses.length} recipient(s)`);
+      db.query(readingsQuery, [patientId], (readingsErr, readings) => {
+        if (readingsErr) {
+          console.warn(`Could not fetch readings for alert ${alertData.alert_id}: ${readingsErr.message}`);
+          return callback(null, alertData);
         }
-        // Continue without failing the API flow
-        callback(null, alertData);
+
+        // Build readings table HTML
+        let readingsTableRows = '';
+        readings.forEach(reading => {
+          const timestamp = new Date(reading.DateTime).toLocaleString('en-US', {
+            dateStyle: 'short',
+            timeStyle: 'short'
+          });
+          readingsTableRows += `
+            <tr>
+              <td style="padding: 8px; border: 1px solid #ddd;">${timestamp}</td>
+              <td style="padding: 8px; border: 1px solid #ddd; font-weight: bold; color: #d9534f;">${reading.Value} ${reading.Unit || 'mg/dL'}</td>
+              <td style="padding: 8px; border: 1px solid #ddd;">${reading.Category}</td>
+              <td style="padding: 8px; border: 1px solid #ddd;">${reading.Food_Notes || 'N/A'}</td>
+            </tr>
+          `;
+        });
+
+        // Send email to patient
+        const patientSubject = 'Blood Sugar Alert - Multiple Abnormal Readings';
+        const patientHtml = `
+          <html>
+            <body style="font-family: Arial, sans-serif; color: #333;">
+              <h2 style="color: #d9534f;">Blood Sugar Alert</h2>
+              <p>Dear ${patientName},</p>
+              <p>You have logged <strong>${abnormalCount}</strong> abnormal blood sugar readings in the past 7 days.</p>
+
+              <h3>Your Abnormal Readings:</h3>
+              <table style="border-collapse: collapse; width: 100%; margin: 20px 0;">
+                <thead>
+                  <tr style="background-color: #f2f2f2;">
+                    <th style="padding: 8px; border: 1px solid #ddd; text-align: left;">Date & Time</th>
+                    <th style="padding: 8px; border: 1px solid #ddd; text-align: left;">Blood Sugar</th>
+                    <th style="padding: 8px; border: 1px solid #ddd; text-align: left;">Category</th>
+                    <th style="padding: 8px; border: 1px solid #ddd; text-align: left;">Food Notes</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${readingsTableRows}
+                </tbody>
+              </table>
+
+              <p style="color: #d9534f; font-weight: bold;">⚠️ Please contact your specialist as soon as possible to discuss these readings.</p>
+              <p>Best regards,<br/>Blood Sugar Monitoring System</p>
+            </body>
+          </html>
+        `;
+
+        emailService.sendAlertEmail([patientEmail], patientSubject, patientHtml, (patientEmailErr, patientResult) => {
+          if (patientEmailErr) {
+            console.warn(`Failed to send email to patient for alert ${alertData.alert_id}: ${patientEmailErr.message}`);
+          } else {
+            console.log(`Alert email sent to patient (${patientEmail}) for alert ${alertData.alert_id}`);
+          }
+
+          // Send email to specialist if assigned
+          if (specialistId) {
+            const specialistQuery = `SELECT Name, Email FROM User WHERE User_ID = ? AND Status = 'Active'`;
+            db.query(specialistQuery, [specialistId], (specialistErr, specialistResults) => {
+              if (specialistErr || !specialistResults || specialistResults.length === 0) {
+                console.warn(`Could not fetch specialist data for alert ${alertData.alert_id}: ${specialistErr ? specialistErr.message : 'Specialist not found'}`);
+                return callback(null, alertData);
+              }
+
+              const specialistName = specialistResults[0].Name;
+              const specialistEmail = specialistResults[0].Email;
+
+              const specialistSubject = `Patient Alert - ${patientName} - Multiple Abnormal Readings`;
+              const specialistHtml = `
+                <html>
+                  <body style="font-family: Arial, sans-serif; color: #333;">
+                    <h2 style="color: #d9534f;">Patient Alert</h2>
+                    <p>Dear ${specialistName},</p>
+                    <p>Your patient <strong>${patientName}</strong> (Patient ID: ${patientId}) has logged <strong>${abnormalCount}</strong> abnormal blood sugar readings in the past 7 days.</p>
+
+                    <h3>Patient's Abnormal Readings:</h3>
+                    <table style="border-collapse: collapse; width: 100%; margin: 20px 0;">
+                      <thead>
+                        <tr style="background-color: #f2f2f2;">
+                          <th style="padding: 8px; border: 1px solid #ddd; text-align: left;">Date & Time</th>
+                          <th style="padding: 8px; border: 1px solid #ddd; text-align: left;">Blood Sugar</th>
+                          <th style="padding: 8px; border: 1px solid #ddd; text-align: left;">Category</th>
+                          <th style="padding: 8px; border: 1px solid #ddd; text-align: left;">Food Notes</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        ${readingsTableRows}
+                      </tbody>
+                    </table>
+
+                    <p style="color: #d9534f; font-weight: bold;">⚠️ Please review this patient's case and consider reaching out to them.</p>
+                    <p>Best regards,<br/>Blood Sugar Monitoring System</p>
+                  </body>
+                </html>
+              `;
+
+              emailService.sendAlertEmail([specialistEmail], specialistSubject, specialistHtml, (specialistEmailErr, specialistResult) => {
+                if (specialistEmailErr) {
+                  console.warn(`Failed to send email to specialist for alert ${alertData.alert_id}: ${specialistEmailErr.message}`);
+                } else {
+                  console.log(`Alert email sent to specialist (${specialistEmail}) for alert ${alertData.alert_id}`);
+                }
+                callback(null, alertData);
+              });
+            });
+          } else {
+            // No specialist assigned, just return
+            callback(null, alertData);
+          }
+        });
       });
     });
   });
