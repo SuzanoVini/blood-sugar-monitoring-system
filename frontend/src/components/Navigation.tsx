@@ -67,7 +67,7 @@ const Navigation: React.FC = () => {
           {userRole === "patient" && <Route path="/dashboard" element={<PatientDashboard />} />}
           {userRole === "specialist" && <Route path="/specialist" element={<SpecialistDashboard />} />}
           {userRole === "specialist" && <Route path="/specialist/patient/:patientId" element={<PatientDetailsPage />} />}
-          {userRole === "admin" && <Route path="/admin" element={<AdminDashboard />} />}
+          {userRole === "administrator" && <Route path="/admin" element={<AdminDashboard />} />}
           {userRole === "clinic_staff" && <Route path="/staff" element={<StaffDashboard />} />}
           {userRole === "clinic_staff" && <Route path="/staff/patient/:patientId" element={<StaffPatientDetailsPage />} />}
           
