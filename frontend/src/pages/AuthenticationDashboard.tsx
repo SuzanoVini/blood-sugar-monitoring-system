@@ -10,7 +10,10 @@ const AuthenticationDashboard: React.FC = () => {
 
   const navigate = useNavigate();
 
-  const handleLogin = async () => {
+  const handleLogin = async (e?: React.FormEvent) => {
+    if (e) {
+      e.preventDefault(); // allow Enter key submit
+    }
     setLoading(true);
     setError(null);
 
@@ -62,7 +65,8 @@ const AuthenticationDashboard: React.FC = () => {
   return (
     <div style={{ maxWidth: 420, margin: "40px auto", textAlign: "center" }}>
       <h2>Login</h2>
-      <div
+      <form
+        onSubmit={handleLogin}
         style={{ padding: 20, borderRadius: 12, boxShadow: "0 0 10px #ccc" }}
       >
         <div style={{ marginBottom: 16, textAlign: "left" }}>
@@ -92,6 +96,7 @@ const AuthenticationDashboard: React.FC = () => {
         <button
           onClick={handleLogin}
           disabled={loading}
+          type="submit"
           style={{
             width: "100%",
             padding: 12,
@@ -111,7 +116,7 @@ const AuthenticationDashboard: React.FC = () => {
         <div style={{ marginTop: 10 }}>
           <Link to="/forgot-password" style={{ color: '#2b7cff' }}>Forgot Password?</Link>
         </div>
-      </div>
+      </form>
     </div>
   );
 };

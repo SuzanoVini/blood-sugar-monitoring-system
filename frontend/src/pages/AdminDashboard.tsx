@@ -5,6 +5,7 @@ import authService from "../services/authService";
 import ThresholdManager from '../components/ThresholdManager';
 import UserManagement from '../components/UserManagement';
 import CreateUserForm from '../components/CreateUserForm';
+import SpecialistAssignmentManager from '../components/SpecialistAssignmentManager';
 
 interface AdminDashboardProps {}
 
@@ -137,6 +138,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = () => {
 
       {/* Render the UserManagement component */}
       <UserManagement />
+
+      {/* Manage specialist-patient assignments */}
+      <SpecialistAssignmentManager />
 
       {/* Render the CreateUserForm component */}
       <CreateUserForm />

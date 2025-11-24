@@ -237,6 +237,129 @@ router.delete('/users/:id', verifyToken, requireRole('Administrator'), (req, res
 });
 
 /**
+ * GET /api/admin/assignments
+ * Get patient roster with current specialist assignments
+ */
+router.get('/assignments', verifyToken, requireRole('Administrator'), (req, res) => {
+  const db = req.app.locals.db;
+
+  adminAPI.getPatientAssignments(db, (err, assignments) => {
+    if (err) {
+      console.error('Error getting patient assignments:', err);
+      return res.status(500).json({
+        success: false,
+        message: 'Error retrieving patient assignments'
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Patient assignments retrieved successfully',
+      data: assignments
+    });
+  });
+});
+
+/**
+ * GET /api/admin/assignments/options
+ * Get dropdown options for specialists and patients
+ */
+router.get('/assignments/options', verifyToken, requireRole('Administrator'), (req, res) => {
+  const db = req.app.locals.db;
+
+  adminAPI.getActiveSpecialists(db, (specErr, specialists) => {
+    if (specErr) {
+      console.error('Error getting specialists:', specErr);
+      return res.status(500).json({
+        success: false,
+        message: 'Error retrieving specialists'
+      });
+    }
+
+    adminAPI.getAllActivePatientsMeta(db, (patErr, patients) => {
+      if (patErr) {
+        console.error('Error getting patients:', patErr);
+        return res.status(500).json({
+          success: false,
+          message: 'Error retrieving patients'
+        });
+      }
+
+      res.json({
+        success: true,
+        message: 'Assignment options retrieved successfully',
+        data: { specialists, patients }
+      });
+    });
+  });
+});
+
+/**
+ * POST /api/admin/assignments
+ * Assign (or reassign) a specialist to a patient
+ * Body: patient_id, specialist_id
+ */
+router.post('/assignments', verifyToken, requireRole('Administrator'), (req, res) => {
+  const db = req.app.locals.db;
+  const { patient_id, specialist_id } = req.body;
+
+  if (!patient_id || !specialist_id) {
+    return res.status(400).json({
+      success: false,
+      message: 'patient_id and specialist_id are required'
+    });
+  }
+
+  adminAPI.assignSpecialistToPatient(db, Number(specialist_id), Number(patient_id), (err, result) => {
+    if (err) {
+      console.error('Error assigning specialist to patient:', err);
+      return res.status(400).json({
+        success: false,
+        message: err.message || 'Error assigning specialist'
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Specialist assignment saved',
+      data: result
+    });
+  });
+});
+
+/**
+ * DELETE /api/admin/assignments/:patientId
+ * Remove specialist assignment for a patient
+ */
+router.delete('/assignments/:patientId', verifyToken, requireRole('Administrator'), (req, res) => {
+  const db = req.app.locals.db;
+  const patientId = parseInt(req.params.patientId, 10);
+
+  if (!patientId) {
+    return res.status(400).json({
+      success: false,
+      message: 'Valid patientId is required'
+    });
+  }
+
+  adminAPI.unassignSpecialistFromPatient(db, patientId, (err, result) => {
+    if (err) {
+      console.error('Error unassigning specialist from patient:', err);
+      return res.status(500).json({
+        success: false,
+        message: 'Error removing assignment'
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Assignment removed',
+      data: result
+    });
+  });
+});
+
+/**
  * POST /api/admin/reports/generate
  * Generate system report
  * Body: period_type (Monthly/Yearly), period_start, period_end

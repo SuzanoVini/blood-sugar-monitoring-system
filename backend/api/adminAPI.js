@@ -1,10 +1,10 @@
-3// ===============================================
+// ===============================================
 // File: api/adminAPI.js
 // Author: Krish
 // Purpose: Provide admin-level functions for user management,
 //          system statistics, and report handling.
 
-// 1️ Get all users (admin view)
+// 1) Get all users (admin view)
 function getAllUsers(db, callback) {
   const query = `
     SELECT User_ID, Name, Role, Email
@@ -17,7 +17,7 @@ function getAllUsers(db, callback) {
   });
 }
 
-// 2️ Get system statistics
+// 2) Get system statistics
 function getSystemStats(db, callback) {
   const stats = {};
 
@@ -50,16 +50,16 @@ function getSystemStats(db, callback) {
   });
 }
 
-// 3️ Get all active patients with their basic metadata
+// 3) Get all active patients with their basic metadata
 function getAllActivePatientsMeta(db, callback) {
-      const query = `
-      SELECT
-        User_ID AS Patient_ID,
-        Name AS Patient_Name,
-        Email AS Patient_Email
-      FROM User
-      WHERE Role = 'Patient';
-    `;
+  const query = `
+    SELECT
+      User_ID AS Patient_ID,
+      Name AS Patient_Name,
+      Email AS Patient_Email
+    FROM User
+    WHERE Role = 'Patient';
+  `;
   db.query(query, (err, results) => {
     if (err) return callback(err);
     callback(null, results); // Returns list of all active patients with their name and email
@@ -96,7 +96,7 @@ function getTotalActivePatientsCount(db, callback) {
   });
 }
 
-// 4️ Save generated report
+// 4) Save generated report
 function saveReport(db, admin_id, period_type, period_start, period_end, summary_data, callback) {
   const query = `
     INSERT INTO Report (Admin_ID, Period_Type, Period_Start, Period_End, Summary_Data)
@@ -111,7 +111,7 @@ function saveReport(db, admin_id, period_type, period_start, period_end, summary
   });
 }
 
-// 5️ Create specialist account
+// 5) Create specialist account
 function createSpecialist(db, userData, callback) {
   const bcrypt = require('bcrypt');
   const SALT_ROUNDS = 10;
@@ -184,7 +184,7 @@ function createSpecialist(db, userData, callback) {
   });
 }
 
-// 6️ Create clinic staff account
+// 6) Create clinic staff account
 function createStaff(db, userData, callback) {
   const bcrypt = require('bcrypt');
   const SALT_ROUNDS = 10;
@@ -257,7 +257,7 @@ function createStaff(db, userData, callback) {
   });
 }
 
-// 7️ Delete user account
+// 7) Delete user account
 function deleteUser(db, userId, callback) {
   // Validate userId
   if (!userId || isNaN(userId)) {
@@ -296,7 +296,7 @@ function deleteUser(db, userId, callback) {
   });
 }
 
-// 8️ Get report by ID
+// 8) Get report by ID
 function getReportById(db, reportId, callback) {
   // Validate reportId
   if (!reportId || isNaN(reportId)) {
@@ -335,6 +335,136 @@ function getReportById(db, reportId, callback) {
   });
 }
 
+// 9) Get all active specialists (for assignment dropdowns)
+function getActiveSpecialists(db, callback) {
+  const query = `
+    SELECT u.User_ID AS Specialist_ID, u.Name, u.Email
+    FROM Specialist s
+    INNER JOIN User u ON s.Specialist_ID = u.User_ID
+    WHERE u.Status = 'Active'
+    ORDER BY u.Name;
+  `;
+  db.query(query, (err, results) => {
+    if (err) return callback(err);
+    callback(null, results);
+  });
+}
+
+// 10) Get patient roster with current assignments
+function getPatientAssignments(db, callback) {
+  const query = `
+    SELECT
+      p.Patient_ID,
+      u.Name AS Patient_Name,
+      u.Email AS Patient_Email,
+      spa.Assignment_ID,
+      spa.Specialist_ID,
+      su.Name AS Specialist_Name,
+      su.Email AS Specialist_Email,
+      spa.Assigned_At
+    FROM Patient p
+    INNER JOIN User u ON p.Patient_ID = u.User_ID
+    LEFT JOIN Specialist_Patient_Assignment spa ON spa.Patient_ID = p.Patient_ID
+    LEFT JOIN User su ON spa.Specialist_ID = su.User_ID
+    ORDER BY u.Name ASC;
+  `;
+  db.query(query, (err, results) => {
+    if (err) return callback(err);
+    callback(null, results);
+  });
+}
+
+// 11) Assign (or reassign) a specialist to a patient
+function assignSpecialistToPatient(db, specialistId, patientId, callback) {
+  if (!specialistId || !patientId) {
+    return callback(new Error('Valid specialistId and patientId are required'), null);
+  }
+
+  // Validate specialist is active
+  const specialistQuery = `
+    SELECT u.User_ID, u.Status
+    FROM Specialist s
+    INNER JOIN User u ON s.Specialist_ID = u.User_ID
+    WHERE s.Specialist_ID = ?;
+  `;
+
+  db.query(specialistQuery, [specialistId], (specErr, specResults) => {
+    if (specErr) return callback(specErr, null);
+    if (specResults.length === 0) {
+      return callback(new Error('Specialist not found'), null);
+    }
+    if (specResults[0].Status !== 'Active') {
+      return callback(new Error('Specialist account is not active'), null);
+    }
+
+    // Validate patient exists
+    const patientQuery = `
+      SELECT u.User_ID, u.Status
+      FROM Patient p
+      INNER JOIN User u ON p.Patient_ID = u.User_ID
+      WHERE p.Patient_ID = ?;
+    `;
+
+    db.query(patientQuery, [patientId], (patErr, patResults) => {
+      if (patErr) return callback(patErr, null);
+      if (patResults.length === 0) {
+        return callback(new Error('Patient not found'), null);
+      }
+      if (patResults[0].Status !== 'Active') {
+        return callback(new Error('Patient account is not active'), null);
+      }
+
+      // Upsert assignment: if exists, update; else insert
+      const checkQuery = `
+        SELECT Assignment_ID
+        FROM Specialist_Patient_Assignment
+        WHERE Patient_ID = ?
+        LIMIT 1;
+      `;
+      db.query(checkQuery, [patientId], (checkErr, checkResults) => {
+        if (checkErr) return callback(checkErr, null);
+
+        if (checkResults.length > 0) {
+          const assignmentId = checkResults[0].Assignment_ID;
+          const updateQuery = `
+            UPDATE Specialist_Patient_Assignment
+            SET Specialist_ID = ?, Assigned_At = NOW()
+            WHERE Assignment_ID = ?;
+          `;
+          db.query(updateQuery, [specialistId, assignmentId], (updateErr) => {
+            if (updateErr) return callback(updateErr, null);
+            callback(null, { assignment_id: assignmentId, specialist_id: specialistId, patient_id: patientId, action: 'updated' });
+          });
+        } else {
+          const insertQuery = `
+            INSERT INTO Specialist_Patient_Assignment (Specialist_ID, Patient_ID, Assigned_At)
+            VALUES (?, ?, NOW());
+          `;
+          db.query(insertQuery, [specialistId, patientId], (insertErr, insertResult) => {
+            if (insertErr) return callback(insertErr, null);
+            callback(null, { assignment_id: insertResult.insertId, specialist_id: specialistId, patient_id: patientId, action: 'created' });
+          });
+        }
+      });
+    });
+  });
+}
+
+// 12) Remove specialist assignment from a patient
+function unassignSpecialistFromPatient(db, patientId, callback) {
+  if (!patientId) return callback(new Error('Valid patientId is required'), null);
+
+  const deleteQuery = `
+    DELETE FROM Specialist_Patient_Assignment
+    WHERE Patient_ID = ?;
+  `;
+
+  db.query(deleteQuery, [patientId], (err, result) => {
+    if (err) return callback(err, null);
+    callback(null, { patient_id: patientId, removed: result.affectedRows > 0 });
+  });
+}
+
 // Export all admin functions
 module.exports = {
   getAllUsers,
@@ -346,5 +476,9 @@ module.exports = {
   createSpecialist,
   createStaff,
   deleteUser,
-  getReportById
+  getReportById,
+  getActiveSpecialists,
+  getPatientAssignments,
+  assignSpecialistToPatient,
+  unassignSpecialistFromPatient
 };

@@ -248,6 +248,47 @@ export default {
     return extractData(res);
   },
 
+  async getAdminAssignmentOptions() {
+    const res = await axiosInstance.get("/admin/assignments/options");
+    const data = extractData(res).data || {};
+    return {
+      specialists: (data.specialists || []).map((s: any) => ({
+        specialist_id: s.Specialist_ID,
+        name: s.Name,
+        email: s.Email
+      })),
+      patients: (data.patients || []).map((p: any) => ({
+        patient_id: p.Patient_ID,
+        name: p.Patient_Name,
+        email: p.Patient_Email
+      }))
+    };
+  },
+
+  async getAdminAssignments() {
+    const res = await axiosInstance.get("/admin/assignments");
+    const data = extractData(res).data || [];
+    return data.map((item: any) => ({
+      patient_id: item.Patient_ID,
+      patient_name: item.Patient_Name,
+      patient_email: item.Patient_Email,
+      specialist_id: item.Specialist_ID,
+      specialist_name: item.Specialist_Name,
+      specialist_email: item.Specialist_Email,
+      assigned_at: item.Assigned_At
+    }));
+  },
+
+  async assignSpecialistToPatient(patientId: number, specialistId: number) {
+    const res = await axiosInstance.post("/admin/assignments", { patient_id: patientId, specialist_id: specialistId });
+    return extractData(res);
+  },
+
+  async unassignSpecialistFromPatient(patientId: number) {
+    const res = await axiosInstance.delete(`/admin/assignments/${patientId}`);
+    return extractData(res);
+  },
+
   async saveReport(report: Record<string, any>) {
     const res = await axiosInstance.post("/admin/reports", report);
     return extractData(res);
