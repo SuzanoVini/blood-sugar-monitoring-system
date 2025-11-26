@@ -34,6 +34,8 @@ const AISuggestions: React.FC<AISuggestionsProps> = ({ refreshSignal }) => {
   const [suggestions, setSuggestions] = useState<AISuggestion[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [generateStatus, setGenerateStatus] = useState<string | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -60,12 +62,26 @@ const AISuggestions: React.FC<AISuggestionsProps> = ({ refreshSignal }) => {
     }
   };
 
+  const handleGenerate = async () => {
+    setIsGenerating(true);
+    setGenerateStatus("Generating new suggestions...");
+    try {
+      const result = await api.generatePatientSuggestions();
+      setGenerateStatus(result.message);
+      await load(); // Refresh the suggestions list
+    } catch (err: any) {
+      setGenerateStatus(err.message || "Failed to generate suggestions.");
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
   useEffect(() => {
     load();
   }, [refreshSignal]);
   
   return (
-    <section className="card ai-card" aria-busy={loading}>
+    <section className="card ai-card" aria-busy={loading || isGenerating}>
       <div className="card-hd">
         <div className="ai-header-left">
           <svg
@@ -83,21 +99,27 @@ const AISuggestions: React.FC<AISuggestionsProps> = ({ refreshSignal }) => {
           </svg>
           <h4>AI Suggestions</h4>
         </div>
-        <button className="btn ghost" onClick={load} title="Refresh">
-          Refresh
-        </button>
+        <div>
+          <button className="btn ghost" onClick={handleGenerate} disabled={isGenerating}>
+            {isGenerating ? "Generating..." : "Generate"}
+          </button>
+          <button className="btn ghost" onClick={load} title="Refresh" disabled={loading}>
+            {loading ? "Refreshing..." : "Refresh"}
+          </button>
+        </div>
       </div>
 
       <div className="card-bd">
+        {generateStatus && <p>{generateStatus}</p>}
         {loading && <p>Loading suggestions...</p>}
         {error && <p className="text-error">{error}</p>}
         {!loading && !error && suggestions.length === 0 && (
-          <p>No suggestions available at this time.</p>
+          <p>No suggestions available at this time. Click 'Generate' to create new suggestions based on your readings.</p>
         )}
         {!loading && !error && suggestions.length > 0 && (
           <ul>
-            {suggestions.map((s, i) => (
-              <li key={i}>
+            {suggestions.map((s) => (
+              <li key={s.trigger}>
                 <div className="ai-suggestion-content">
                   <p>{s.message}</p>
                   <small>{s.trigger}</small>

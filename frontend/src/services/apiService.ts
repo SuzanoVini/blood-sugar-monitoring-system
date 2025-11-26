@@ -205,6 +205,26 @@ export default {
     }
   },
 
+  async generatePatientSuggestions() {
+    const currentUser = await authService.getCurrentUser();
+    const userId = currentUser?.user_id;
+    if (!userId) {
+      console.warn("generatePatientSuggestions failed: No user ID found.");
+      return null;
+    }
+    try {
+      const res = await axiosInstance.post("/patient/suggestions/generate", { patient_id: userId });
+      return extractData(res);
+    } catch (err) {
+      if (err instanceof Error) {
+        console.error("generatePatientSuggestions failed:", err.message);
+      } else {
+        console.error("generatePatientSuggestions failed:", err);
+      }
+      throw err;
+    }
+  },
+
 
   // specialist
   async getAssignedPatients() {

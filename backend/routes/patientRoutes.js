@@ -7,6 +7,7 @@ const express = require('express');
 const router = express.Router();
 const patientAPI = require('../api/patientAPI');
 const alertAPI = require('../api/alertAPI');
+const aiProcessingAPI = require('../api/aiProcessingAPI');
 
 // Middleware to attach patient ID from JWT token
 function attachPatientIdFromJWT(req, res, next) {
@@ -331,7 +332,7 @@ router.post('/suggestions/generate', attachPatientIdFromJWT, verifyPatientMiddle
   const db = req.app.locals.db;
   const patientId = req.patientId;
 
-  patientAPI.generateAISuggestions(db, patientId, (err, suggestions) => {
+  aiProcessingAPI.analyzeAndCreateSuggestions(db, patientId, (err, result) => {
     if (err) {
       console.error('Error generating suggestions:', err);
       return res.status(500).json({
@@ -341,13 +342,18 @@ router.post('/suggestions/generate', attachPatientIdFromJWT, verifyPatientMiddle
       });
     }
 
+    if (result.status === 'skipped') {
+      return res.json({
+        success: true,
+        message: `Suggestion generation skipped: ${result.reason}`,
+        data: result
+      });
+    }
+
     res.json({
       success: true,
-      message: `Generated ${suggestions.length} new AI suggestions`,
-      data: {
-        suggestions: suggestions,
-        count: suggestions.length
-      }
+      message: `Analysis complete. Found ${result.patterns_found} patterns and created ${result.suggestions_created} new AI suggestions.`,
+      data: result
     });
   });
 });

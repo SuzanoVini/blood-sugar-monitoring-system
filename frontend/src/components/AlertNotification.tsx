@@ -81,8 +81,8 @@ const AlertNotification: React.FC = () => {
       {realTimeNotifications.length > 0 && (
         <div className="real-time-alerts">
           <ul>
-            {realTimeNotifications.map((n) => (
-              <li key={n.id} className={`notification ${n.type}`}>
+            {realTimeNotifications.map((n, index) => (
+              <li key={n.id || index} className={`notification ${n.type}`}>
                 <div className="notification-content">
                   <strong>{n.title}</strong>
                   <p>{n.message}</p>
@@ -101,8 +101,8 @@ const AlertNotification: React.FC = () => {
         <>
           <h4>Historical Alerts</h4>
           <ul>
-            {alerts.map((a) => (
-              <li key={a.alert_id}>
+            {alerts.map((a, index) => (
+              <li key={a.alert_id || index}>
                 <strong>
                   {a.sent_at ? new Date(a.sent_at).toLocaleString() : "Now"}
                 </strong>{" "}
