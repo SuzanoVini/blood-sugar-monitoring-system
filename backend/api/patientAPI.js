@@ -128,6 +128,14 @@ function getReadingsCount(db, patientId, filters, callback) {
 function addReading(db, patientId, readingData, callback) {
   const { dateTime, value, unit, foodNotes, activityNotes, event, symptoms, notes } = readingData;
 
+  const providedDateTime = new Date(dateTime);
+  if (isNaN(providedDateTime.getTime())) {
+    return callback(new Error('Invalid date format provided for reading'), null);
+  }
+  if (providedDateTime > new Date()) {
+    return callback(new Error('Reading date and time cannot be in the future'), null);
+  }
+
   console.log('addReading: Categorizing reading...');
   // First, categorize the reading based on thresholds
   thresholdAPI.categorizeReading(db, value, patientId, (err, category) => {
@@ -244,6 +252,13 @@ function updateReading(db, readingId, patientId, updateData, callback) {
 
     function executeUpdate() {
       if (updateData.dateTime !== undefined) {
+        const providedDateTime = new Date(updateData.dateTime);
+        if (isNaN(providedDateTime.getTime())) {
+          return callback(new Error('Invalid date format provided for reading'), null);
+        }
+        if (providedDateTime > new Date()) {
+          return callback(new Error('Reading date and time cannot be in the future'), null);
+        }
         updateFields.push('DateTime = ?');
         queryParams.push(updateData.dateTime);
       }

@@ -71,10 +71,19 @@ router.put('/profile',
       updateData.name = name.trim();
     }
     if (phone !== undefined) {
-      if (phone !== null && (typeof phone !== 'string' || phone.trim().length === 0)) {
-        return res.status(400).json({ success: false, message: 'Phone must be a non-empty string or null.' });
+      if (phone !== null) {
+        if (typeof phone !== 'string' || phone.trim().length === 0) {
+          return res.status(400).json({ success: false, message: 'Phone must be a non-empty string or null.' });
+        }
+        // Validate phone format (exactly 10 digits)
+        const phoneRegex = /^\d{10}$/;
+        if (!phoneRegex.test(phone.trim())) {
+          return res.status(400).json({ success: false, message: 'Phone number must be exactly 10 digits.' });
+        }
+        updateData.phone = phone.trim();
+      } else {
+        updateData.phone = null;
       }
-      updateData.phone = phone === null ? null : phone.trim();
     }
 
     // Handle profile image upload
@@ -95,6 +104,11 @@ router.put('/profile',
         const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
         if (!dateRegex.test(dateOfBirth)) {
           return res.status(400).json({ success: false, message: 'Date of birth must be in YYYY-MM-DD format.' });
+        }
+        // Validate date is not in future
+        const dob = new Date(dateOfBirth);
+        if (dob > new Date()) {
+            return res.status(400).json({ success: false, message: 'Date of Birth cannot be in the future.' });
         }
         updateData.dateOfBirth = dateOfBirth;
       }

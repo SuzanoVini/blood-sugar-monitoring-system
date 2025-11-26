@@ -43,6 +43,29 @@ const Register: React.FC = () => {
       return;
     }
 
+    const dob = new Date(formData.dateOfBirth);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Compare against start of today
+    // We need to account for timezone offset when parsing the YYYY-MM-DD string
+    // new Date("YYYY-MM-DD") parses as UTC, but we want local.
+    // A better way is to just check if the string is lexically larger than today's local string.
+    
+    // Construct local YYYY-MM-DD string for today
+    const offset = today.getTimezoneOffset();
+    const localToday = new Date(today.getTime() - (offset*60*1000)).toISOString().split('T')[0];
+
+    if (formData.dateOfBirth > localToday) {
+      setError("Date of Birth cannot be in the future.");
+      setLoading(false);
+      return;
+    }
+
+    if (formData.phone.length !== 10 || !/^\d{10}$/.test(formData.phone)) {
+      setError("Phone number must be exactly 10 digits.");
+      setLoading(false);
+      return;
+    }
+
     const data = new FormData();
     data.append("name", formData.name);
     data.append("email", formData.email);
@@ -130,6 +153,7 @@ const Register: React.FC = () => {
             style={{ width: "100%", padding: 10, marginTop: 4 }}
             value={formData.dateOfBirth}
             onChange={handleChange}
+            max={new Date(new Date().getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().split("T")[0]}
           />
         </div>
 
@@ -142,6 +166,9 @@ const Register: React.FC = () => {
             value={formData.phone}
             onChange={handleChange}
             placeholder="Enter your phone number"
+            minLength={10}
+            maxLength={10}
+            pattern="[0-9]{10}"
           />
         </div>
 

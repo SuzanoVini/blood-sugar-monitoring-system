@@ -86,6 +86,14 @@ router.post('/users/specialist', upload.single('profileImage'), verifyToken, req
     });
   }
 
+  // Validate phone number (if provided)
+  if (req.body.phone && !/^\d{10}$/.test(req.body.phone)) {
+    return res.status(400).json({
+      success: false,
+      message: 'Phone number must be exactly 10 digits'
+    });
+  }
+
   const userData = {
     name: name.trim(),
     email: email.trim().toLowerCase(),
@@ -155,6 +163,14 @@ router.post('/users/staff', upload.single('profileImage'), verifyToken, requireR
     return res.status(400).json({
       success: false,
       message: 'Password must be at least 6 characters long'
+    });
+  }
+
+  // Validate phone number (if provided)
+  if (req.body.phone && !/^\d{10}$/.test(req.body.phone)) {
+    return res.status(400).json({
+      success: false,
+      message: 'Phone number must be exactly 10 digits'
     });
   }
 

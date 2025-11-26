@@ -68,6 +68,23 @@ router.post('/register', upload.single('profileImage'), (req, res) => {
     });
   }
 
+  // Validate that date of birth is not in the future
+  const dob = new Date(dateOfBirth);
+  if (dob > new Date()) {
+    return res.status(400).json({
+      success: false,
+      message: 'Date of Birth cannot be in the future'
+    });
+  }
+
+  // Validate phone number
+  if (!phone || phone.length !== 10 || !/^\d{10}$/.test(phone)) {
+    return res.status(400).json({
+      success: false,
+      message: 'Phone number must be exactly 10 digits'
+    });
+  }
+
   const userData = {
     name: name.trim(),
     email: email.trim().toLowerCase(),

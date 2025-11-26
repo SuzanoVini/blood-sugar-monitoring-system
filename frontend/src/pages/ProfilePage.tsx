@@ -62,7 +62,14 @@ const ProfilePage: React.FC = () => {
 
     const updateData: { name?: string; phone?: string | null; } = {};
     if (profile.name !== undefined) updateData.name = profile.name;
-    if (profile.phone !== undefined) updateData.phone = profile.phone;
+    if (profile.phone !== undefined) {
+      if (profile.phone && (profile.phone.length !== 10 || !/^\d{10}$/.test(profile.phone))) {
+        setError("Phone number must be exactly 10 digits.");
+        setLoading(false);
+        return;
+      }
+      updateData.phone = profile.phone;
+    }
 
     try {
       let response;
@@ -163,11 +170,11 @@ const ProfilePage: React.FC = () => {
         <div className="stack">
           <div className="card">
             <div className="card-bd">
-              <form onSubmit={handleSubmit}>
+              <form onSubmit={handleSubmit} className="form full">
                 {error && <div className="alert error">{error}</div>}
                 {success && <div className="alert success">{success}</div>}
 
-                <div className="form-group">
+                <div className="input-group">
                   <label>Profile Image</label>
                   <div style={{ marginBottom: '10px' }}>
                     {currentProfileImage ? (
@@ -197,42 +204,49 @@ const ProfilePage: React.FC = () => {
                     name="profileImage"
                     accept="image/*"
                     onChange={handleFileChange}
-                    style={{ width: '100%', padding: '10px', marginTop: '4px' }}
+                    className="input"
                   />
                 </div>
 
-                <div className="form-group">
+                <div className="input-group">
                   <label htmlFor="name">Name</label>
                   <input
                     type="text"
                     id="name"
                     name="name"
+                    className="input"
                     value={profile.name || ''}
                     onChange={handleChange}
                     required
                   />
                 </div>
 
-                <div className="form-group">
+                <div className="input-group">
                   <label htmlFor="email">Email</label>
                   <input
                     type="email"
                     id="email"
                     name="email"
+                    className="input"
                     value={profile.email || ''}
                     disabled // Email is typically not user-editable
                   />
                 </div>
 
-                <div className="form-group">
+                <div className="input-group">
                   <label htmlFor="phone">Phone Number</label>
                   <input
                     type="tel"
                     id="phone"
                     name="phone"
+                    className="input"
                     value={profile.phone || ''}
                     onChange={handleChange}
-                    placeholder="e.g., 555-123-4567"
+                    placeholder="e.g., 5551234567"
+                    minLength={10}
+                    maxLength={10}
+                    pattern="[0-9]{10}"
+                    style={{maxWidth: '425px'}}
                   />
                 </div>
 

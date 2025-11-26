@@ -24,7 +24,12 @@ const CreateUserForm: React.FC = () => {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    if (name === 'phone') {
+      // Allow only digits
+      setFormData(prev => ({ ...prev, [name]: value.replace(/[^0-9]/g, '') }));
+    } else {
+      setFormData(prev => ({ ...prev, [name]: value }));
+    }
   };
 
   const handleSubmit = async (e: FormEvent) => {
@@ -32,6 +37,12 @@ const CreateUserForm: React.FC = () => {
     setLoading(true);
     setError(null);
     setSuccess(null);
+
+    if (formData.phone && formData.phone.length !== 10) {
+      setError('Phone number must be exactly 10 digits.');
+      setLoading(false);
+      return;
+    }
 
     const endpoint = userType === 'Specialist' ? '/admin/users/specialist' : '/admin/users/staff';
     const payload = {
@@ -80,52 +91,63 @@ const CreateUserForm: React.FC = () => {
           </button>
         </div>
 
-        <form onSubmit={handleSubmit}>
-          {error && <div className="alert error">{error}</div>}
-          {success && <div className="alert success">{success}</div>}
+        <form onSubmit={handleSubmit} className="form">
+          {error && <div className="alert error" style={{ gridColumn: '1 / -1' }}>{error}</div>}
+          {success && <div className="alert success" style={{ gridColumn: '1 / -1' }}>{success}</div>}
 
-          <div className="form-group">
+          <div className="input-group">
             <label htmlFor="name">Full Name</label>
-            <input type="text" id="name" name="name" value={formData.name} onChange={handleChange} required />
+            <input type="text" id="name" name="name" className="input" value={formData.name} onChange={handleChange} required style={{maxWidth: '425px'}} />
           </div>
 
-          <div className="form-group">
+          <div className="input-group">
             <label htmlFor="email">Email Address</label>
-            <input type="email" id="email" name="email" value={formData.email} onChange={handleChange} required />
+            <input type="email" id="email" name="email" className="input" value={formData.email} onChange={handleChange} required style={{maxWidth: '425px'}} />
           </div>
 
-          <div className="form-group">
+          <div className="input-group">
             <label htmlFor="password">Password</label>
-            <input type="password" id="password" name="password" value={formData.password} onChange={handleChange} required minLength={6} />
+            <input type="password" id="password" name="password" className="input" value={formData.password} onChange={handleChange} required minLength={6} style={{maxWidth: '425px'}} />
           </div>
 
-          <div className="form-group">
+          <div className="input-group">
             <label htmlFor="phone">Phone Number</label>
-            <input type="tel" id="phone" name="phone" value={formData.phone} onChange={handleChange} />
+            <input
+              type="tel"
+              id="phone"
+              name="phone"
+              className="input"
+              value={formData.phone}
+              onChange={handleChange}
+              minLength={10}
+              maxLength={10}
+              pattern="[0-9]{10}"
+              style={{ maxWidth: '425px' }}
+            />
           </div>
 
-          <div className="form-group">
+          <div className="input-group">
             <label htmlFor="workingId">Working ID</label>
-            <input type="text" id="workingId" name="workingId" value={formData.workingId} onChange={handleChange} required />
+            <input type="text" id="workingId" name="workingId" className="input" value={formData.workingId} onChange={handleChange} required style={{maxWidth: '425px'}} />
           </div>
 
           {userType === 'Specialist' && (
-            <div className="form-group">
+            <div className="input-group">
               <label htmlFor="specialization">Specialization</label>
-              <input type="text" id="specialization" name="specialization" value={formData.specialization} onChange={handleChange} required />
+              <input type="text" id="specialization" name="specialization" className="input" value={formData.specialization} onChange={handleChange} required style={{maxWidth: '425px'}} />
             </div>
           )}
 
           {userType === 'Clinic_Staff' && (
-            <div className="form-group">
+            <div className="input-group">
               <label htmlFor="department">Department</label>
-              <input type="text" id="department" name="department" value={formData.department} onChange={handleChange} required />
+              <input type="text" id="department" name="department" className="input" value={formData.department} onChange={handleChange} required style={{maxWidth: '425px'}} />
             </div>
           )}
 
-          <p><small>Profile image upload is not supported in this form.</small></p>
+          <p style={{ gridColumn: '1 / -1' }}><small>Profile image upload is not supported in this form.</small></p>
 
-          <div className="form-actions">
+          <div className="form-actions" style={{ gridColumn: '1 / -1' }}>
             <button type="submit" className="btn primary" disabled={loading}>
               {loading ? 'Creating Account...' : `Create ${userType.replace('_', ' ')} Account`}
             </button>

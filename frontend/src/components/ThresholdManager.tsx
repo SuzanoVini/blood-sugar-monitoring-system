@@ -87,36 +87,36 @@ const ThresholdManager: React.FC = () => {
           {error && <div className="alert error">{error}</div>}
           {success && <div className="alert success">{success}</div>}
 
-          <div className="form-grid">
-            <div className="form-group">
+          <div className="form" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
+            <div className="input-group">
               <label htmlFor="Normal_Low">Normal (Low)</label>
-              <input type="number" id="Normal_Low" name="Normal_Low" value={thresholds.Normal_Low || ''} onChange={handleChange} required />
+              <input type="number" id="Normal_Low" name="Normal_Low" className="input" value={thresholds.Normal_Low || ''} onChange={handleChange} required />
             </div>
-            <div className="form-group">
+            <div className="input-group">
               <label htmlFor="Normal_High">Normal (High)</label>
-              <input type="number" id="Normal_High" name="Normal_High" value={thresholds.Normal_High || ''} onChange={handleChange} required />
+              <input type="number" id="Normal_High" name="Normal_High" className="input" value={thresholds.Normal_High || ''} onChange={handleChange} required />
             </div>
 
-            <div className="form-group">
+            <div className="input-group">
               <label htmlFor="Borderline_Low">Borderline (Low)</label>
-              <input type="number" id="Borderline_Low" name="Borderline_Low" value={thresholds.Borderline_Low || ''} onChange={handleChange} required />
+              <input type="number" id="Borderline_Low" name="Borderline_Low" className="input" value={thresholds.Borderline_Low || ''} onChange={handleChange} required />
             </div>
-            <div className="form-group">
+            <div className="input-group">
               <label htmlFor="Borderline_High">Borderline (High)</label>
-              <input type="number" id="Borderline_High" name="Borderline_High" value={thresholds.Borderline_High || ''} onChange={handleChange} required />
+              <input type="number" id="Borderline_High" name="Borderline_High" className="input" value={thresholds.Borderline_High || ''} onChange={handleChange} required />
             </div>
 
-            <div className="form-group">
+            <div className="input-group">
               <label htmlFor="Abnormal_Low">Abnormal (Low)</label>
-              <input type="number" id="Abnormal_Low" name="Abnormal_Low" value={thresholds.Abnormal_Low || ''} onChange={handleChange} required />
+              <input type="number" id="Abnormal_Low" name="Abnormal_Low" className="input" value={thresholds.Abnormal_Low || ''} onChange={handleChange} required />
             </div>
-            <div className="form-group">
+            <div className="input-group">
               <label htmlFor="Abnormal_High">Abnormal (High)</label>
-              <input type="number" id="Abnormal_High" name="Abnormal_High" value={thresholds.Abnormal_High || ''} onChange={handleChange} required />
+              <input type="number" id="Abnormal_High" name="Abnormal_High" className="input" value={thresholds.Abnormal_High || ''} onChange={handleChange} required />
             </div>
           </div>
 
-          <div className="form-actions">
+          <div className="form-actions mt16">
             <button type="submit" className="btn primary" disabled={loading}>
               {loading ? 'Saving...' : 'Save Thresholds'}
             </button>

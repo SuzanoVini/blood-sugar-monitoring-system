@@ -22,12 +22,17 @@ const BloodSugarForm: React.FC<BloodSugarFormProps> = ({
   readingToEdit = {},
   isEditMode,
 }) => {
+  const getLocalISOString = (date: Date) => {
+    const offset = date.getTimezoneOffset() * 60000; // offset in milliseconds
+    return new Date(date.getTime() - offset).toISOString().slice(0, 16);
+  };
+
   const [value, setValue] = useState(readingToEdit.value?.toString() || "");
   const [unit, setUnit] = useState<"mg/dl" | "mmol/L">(
     readingToEdit.unit || "mg/dl"
   );
   const [datetime, setDatetime] = useState(
-    readingToEdit.datetime ? new Date(readingToEdit.datetime).toISOString().slice(0, 16) : new Date().toISOString().slice(0, 16)
+    readingToEdit.datetime ? getLocalISOString(new Date(readingToEdit.datetime)) : getLocalISOString(new Date())
   );
   const [food, setFood] = useState(readingToEdit.food_notes || "");
   const [activity, setActivity] = useState(readingToEdit.activity_notes || "");
@@ -39,7 +44,7 @@ const BloodSugarForm: React.FC<BloodSugarFormProps> = ({
     if (isEditMode && readingToEdit) {
       setValue(readingToEdit.value?.toString() || "");
       setUnit(readingToEdit.unit || "mg/dl");
-      setDatetime(readingToEdit.datetime ? new Date(readingToEdit.datetime).toISOString().slice(0, 16) : new Date().toISOString().slice(0, 16));
+      setDatetime(readingToEdit.datetime ? getLocalISOString(new Date(readingToEdit.datetime)) : getLocalISOString(new Date()));
       setFood(readingToEdit.food_notes || "");
       setActivity(readingToEdit.activity_notes || "");
       setSymptoms(readingToEdit.symptoms || readingToEdit.notes || "");
@@ -51,6 +56,12 @@ const BloodSugarForm: React.FC<BloodSugarFormProps> = ({
     setError("");
     if (!value) {
       setError("Please enter a blood sugar value.");
+      return;
+    }
+    const selectedDateTime = new Date(datetime);
+    const now = new Date();
+    if (selectedDateTime > now) {
+      setError("Date and time cannot be in the future.");
       return;
     }
     setLoading(true);
@@ -134,6 +145,7 @@ const BloodSugarForm: React.FC<BloodSugarFormProps> = ({
                 className="input"
                 value={datetime}
                 onChange={(e) => setDatetime(e.target.value)}
+                max={getLocalISOString(new Date())} // Prevent future dates via picker
                 required
               />
               <div className="addon addon-icon" aria-hidden>
