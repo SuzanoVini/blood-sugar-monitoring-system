@@ -33,7 +33,7 @@ const AlertNotification: React.FC = () => {
       console.log('Real-time alert received:', data);
       const newNotification: NotificationData = {
         ...data,
-        id: `${data.timestamp}-${Math.random()}` // Create a unique ID for the key
+        id: data.id
       };
       setRealTimeNotifications(prev => [newNotification, ...prev]);
     };

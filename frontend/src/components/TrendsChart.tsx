@@ -68,9 +68,13 @@ const TrendsChart: React.FC<TrendsChartProps> = ({ readings = [] }) => {
   };
 
   return (
-    <div className="bg-white p-4 rounded-xl shadow-lg mb-4">
-      <h4 className="text-lg font-semibold text-blue-600 mb-2">Trend</h4>
-      <Line data={data} options={options} />
+    <div className="card">
+      <div className="card-hd">
+        <h4 style={{marginLeft: '8px'}}>Trend</h4> {/* Added margin-left to shift right */}
+      </div>
+      <div className="card-bd">
+        <Line data={data} options={options} />
+      </div>
     </div>
   );
 };

@@ -58,7 +58,7 @@ const FeedbackForm: React.FC<FeedbackFormProps> = ({ patientId, specialistId, on
       <div className="card-hd">
         <h4>Submit Feedback for Patient {patientId}</h4>
       </div>
-      <div className="card-bd">
+      <div className="card-bd feedback-card-bd">
         <form onSubmit={handleSubmit}>
           {error && <div className="alert error">{error}</div>}
           {success && <div className="alert success">{success}</div>}
@@ -69,10 +69,11 @@ const FeedbackForm: React.FC<FeedbackFormProps> = ({ patientId, specialistId, on
               id="feedbackContent"
               value={content}
               onChange={(e) => setContent(e.target.value)}
-              rows={4}
+              rows={8} // Increased rows for more vertical space
               placeholder="Enter your feedback here..."
               disabled={loading}
               required
+              className="feedback-textarea"
             ></textarea>
           </div>
 

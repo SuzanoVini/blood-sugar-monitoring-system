@@ -228,40 +228,44 @@ const SpecialistDashboard: React.FC = () => {
       </div>
 
       {/* Readings Table */}
-      <div className="bg-white p-4 rounded-xl shadow-lg mb-4 overflow-x-auto">
-        <h4 className="text-lg font-semibold text-blue-600 mb-2">All Assigned Readings</h4>
-        {loadingReadings ? (
-          <p>Loading readings...</p>
-        ) : readings.length === 0 ? (
-          <p>No readings found for the selected filters.</p>
-        ) : (
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Patient Name</th>
-                <th>DateTime</th>
-                <th>Value</th>
-                <th>Category</th>
-                <th>Food</th>
-                <th>Activity</th>
-                <th>Notes</th>
-              </tr>
-            </thead>
-            <tbody>
-              {readings.map((r) => (
-                <tr key={r.reading_id} className="hover:bg-gray-50 transition rounded">
-                  <td>{r.patient_name}</td>
-                  <td>{new Date(r.datetime).toLocaleString()}</td>
-                  <td>{r.value} {r.unit || "mg/dl"}</td>
-                  <td>{r.category}</td>
-                  <td>{r.food_notes}</td>
-                  <td>{r.activity_notes}</td>
-                  <td>{r.notes || r.symptoms}</td>
+      <div className="card mb-4">
+        <div className="card-hd">
+          <h4>All Assigned Readings</h4>
+        </div>
+        <div className="card-bd" style={{ overflowX: 'auto' }}>
+          {loadingReadings ? (
+            <p>Loading readings...</p>
+          ) : readings.length === 0 ? (
+            <p>No readings found for the selected filters.</p>
+          ) : (
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Patient Name</th>
+                  <th>DateTime</th>
+                  <th>Value</th>
+                  <th>Category</th>
+                  <th>Food</th>
+                  <th>Activity</th>
+                  <th>Notes</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
+              </thead>
+              <tbody>
+                {readings.map((r) => (
+                  <tr key={r.reading_id}>
+                    <td>{r.patient_name}</td>
+                    <td>{new Date(r.datetime).toLocaleString()}</td>
+                    <td>{r.value} {r.unit || "mg/dl"}</td>
+                    <td>{r.category}</td>
+                    <td>{r.food_notes}</td>
+                    <td>{r.activity_notes}</td>
+                    <td>{r.notes || r.symptoms}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
       </div>
 
       {/* Feedback Modal */}

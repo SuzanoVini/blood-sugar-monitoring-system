@@ -55,7 +55,8 @@ body{
 .content{padding:24px 28px; overflow:auto}
 .page-title{font-size:26px; font-weight:700; margin:4px 0 18px}
 .grid{display:grid; gap:18px}
-.grid.cols-2{grid-template-columns:1.2fr .8fr}
+.grid-tight-gap{gap:8px}
+.grid.cols-2{grid-template-columns:.8fr 1.2fr}
 .grid.cols-3{grid-template-columns:repeat(3,1fr)}
 @media (max-width: 1100px){ .grid.cols-2, .grid.cols-3{grid-template-columns:1fr} }
 
@@ -65,7 +66,8 @@ body{
   border:1px solid var(--line); border-radius:var(--radius); box-shadow:var(--shadow);
 }
 .card .card-hd{padding:14px 16px; border-bottom:1px solid var(--line); display:flex; align-items:center; justify-content:space-between}
-.card .card-bd{padding:16px}
+.card .card-bd{padding:24px}
+.card .feedback-card-bd{padding:16px 10px}
 
 /* Form */
 .form{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px}
@@ -77,6 +79,7 @@ label{font-size:12px; color:var(--muted); margin-bottom:6px; display:block}
 }
 .input:focus, .select:focus, .textarea:focus{border-color:var(--primary); box-shadow:0 0 0 4px rgba(59,130,246,.15)}
 .textarea{min-height:74px; resize:vertical}
+.feedback-textarea{width:450px;}
 
 /* Buttons */
 .btn{
@@ -162,11 +165,11 @@ label{font-size:12px; color:var(--muted); margin-bottom:6px; display:block}
 .m0{margin:0} .mt8{margin-top:8px} .mt16{margin-top:16px}
 
 /* Page container + dashboard grid */
-.container{max-width:1400px;margin:0 auto;padding:24px;background-color:var(--bg);}
+.container{max-width:1600px;margin:0 auto;padding:16px;background-color:var(--bg);}
 .dashboard-grid{
   display:grid;
   grid-template-columns:480px 1fr;
-  gap:48px; /* Increased from 32px */
+  gap:64px; /* Increased horizontal gap */
   align-items:start;
 }
 .stack{display:grid;gap:24px} /* Increased from 16px */

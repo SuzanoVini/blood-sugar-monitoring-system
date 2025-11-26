@@ -63,53 +63,55 @@ const SpecialistAssignmentManager: React.FC = () => {
   };
 
   return (
-    <div className="card">
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "1rem" }}>
+    <div style={{height: '100%'}}>
+      <div className="card-hd">
         <h4>Specialist Assignments</h4>
         <button className="btn secondary" onClick={loadData} disabled={loading}>
           {loading ? "Refreshing..." : "Refresh"}
         </button>
       </div>
-      {error && <p style={{ color: "#c00", marginTop: "0.5rem" }}>{error}</p>}
-      {loading ? (
-        <p>Loading assignments...</p>
-      ) : assignments.length === 0 ? (
-        <p>No patients found.</p>
-      ) : (
-        <div style={{ overflowX: "auto" }}>
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Patient</th>
-                <th>Email</th>
-                <th>Assigned Specialist</th>
-              </tr>
-            </thead>
-            <tbody>
-              {assignments.map((row) => (
-                <tr key={row.patient_id}>
-                  <td>{row.patient_name}</td>
-                  <td>{row.patient_email}</td>
-                  <td>
-                    <select
-                      value={row.specialist_id ?? ""}
-                      onChange={(e) => handleUpdate(row.patient_id, e.target.value)}
-                      disabled={savingPatient === row.patient_id}
-                    >
-                      <option value="">Unassigned</option>
-                      {specialists.map((s) => (
-                        <option key={s.specialist_id} value={s.specialist_id}>
-                          {s.name} ({s.email})
-                        </option>
-                      ))}
-                    </select>
-                  </td>
+      <div className="card-bd">
+        {error && <p style={{ color: "#c00", marginTop: "0.5rem" }}>{error}</p>}
+        {loading ? (
+          <p>Loading assignments...</p>
+        ) : assignments.length === 0 ? (
+          <p>No patients found.</p>
+        ) : (
+          <div style={{ overflowX: "auto" }}>
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Patient</th>
+                  <th>Email</th>
+                  <th>Assigned Specialist</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+              </thead>
+              <tbody>
+                {assignments.map((row) => (
+                  <tr key={row.patient_id}>
+                    <td>{row.patient_name}</td>
+                    <td>{row.patient_email}</td>
+                    <td>
+                      <select
+                        value={row.specialist_id ?? ""}
+                        onChange={(e) => handleUpdate(row.patient_id, e.target.value)}
+                        disabled={savingPatient === row.patient_id}
+                      >
+                        <option value="">Unassigned</option>
+                        {specialists.map((s) => (
+                          <option key={s.specialist_id} value={s.specialist_id}>
+                            {s.name} ({s.email})
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
     </div>
   );
 };

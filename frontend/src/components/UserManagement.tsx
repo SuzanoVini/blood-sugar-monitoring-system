@@ -102,8 +102,8 @@ const UserManagement: React.FC = () => {
   }
 
   return (
-    <div className="card">
-      <div className="card-hd">
+    <div style={{height: '100%'}}>
+      <div className="card-hd" style={{borderRight: '1px solid var(--line)'}}>
         <h4>User Role Management</h4>
       </div>
       <div className="card-bd">

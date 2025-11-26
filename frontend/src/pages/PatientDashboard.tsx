@@ -107,15 +107,15 @@ const PatientDashboard: React.FC = () => {
       <div className="dashboard-grid">
         {/* Left column */}
         <div className="stack">
-          <BloodSugarForm onSaved={refreshAll} />
-          <ReadingsList refreshSignal={signal} />
+          <BloodSugarForm onSaved={refreshAll} style={{marginBottom: '32px'}} />
+          <ReadingsList refreshSignal={signal} style={{marginBottom: '32px'}} />
           <PatientFeedbackList patientId={patientId} /> {/* Render the PatientFeedbackList */}
         </div>
 
         {/* Right column */}
         <div className="stack">
-          <AlertNotification />
-          <AISuggestions refreshSignal={signal} />
+          <AlertNotification style={{marginBottom: '32px'}} />
+          <AISuggestions refreshSignal={signal} style={{marginBottom: '32px'}} />
           <TrendsChart readings={readingsForChart} />
         </div>
       </div>
