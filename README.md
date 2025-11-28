@@ -1,6 +1,6 @@
 # Blood Sugar Monitoring System
 
-Web-based diabetes management platform enabling patients to track blood sugar readings, receive AI-generated health suggestions and alerts, while allowing specialists to monitor and provide feedback.
+Web-based Blood Sugar management platform enabling patients to track blood sugar readings, receive AI-generated health suggestions and alerts, while allowing specialists to monitor and provide feedback.
 
 ## Architecture
 
@@ -15,7 +15,7 @@ Web-based diabetes management platform enabling patients to track blood sugar re
 ```
 ┌─────────────┐      HTTP/WS     ┌──────────────┐      MySQL       ┌──────────┐
 │   React     │ <──────────────> │   Express    │ <──────────────> │  MySQL   │
-│   (Vite)    │   :3000->:5000    │   REST API   │                  │          │
+│   (Vite)    │   :3000->:5000   │   REST API   │                  │          │
 └─────────────┘                  └──────────────┘                  └──────────┘
                                          │
                                          ├─> SendGrid (email alerts)
